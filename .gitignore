@@ -1,0 +1,31 @@
+# macOS
+.DS_Store
+
+# Xcode per-user state (window layout, breakpoints, last opened files).
+# Never shared: it changes on every interaction and carries no project info.
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+
+# Build products and intermediates
+build/
+DerivedData/
+
+# Swift Package Manager
+# .swiftpm holds per-user package editor state; .build is SPM's build dir.
+# Package.resolved is deliberately NOT ignored: pinned dependency versions
+# must be shared and are the CI cache key (ADR-009).
+.swiftpm/
+.build/
+
+# Fastlane generated artifacts (reports, screenshots, test output)
+fastlane/report.xml
+fastlane/test_output/
+fastlane/screenshots/
+
+# Bundler (local gem install path, if configured)
+vendor/bundle/
+
+# Code coverage and profiling artifacts
+*.profraw
+*.xcresult
