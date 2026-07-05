@@ -325,3 +325,136 @@ locally.
   in-editor violations; pre-commit hook running `fastlane lint`.
 - Minor: simulator runtime fallback notice (`Runtime build '23F81a' not
   found`) — update runtimes via Xcode Settings → Components someday.
+
+---
+
+## Task 4: Snapshot testing infrastructure
+
+**Branch/PR:** `0-4-snapshot-testing`
+**References:** ADR-008; closes the Task 3 follow-up (`snap` lane
+placeholder)
+
+### Summary
+
+Added `pointfreeco/swift-snapshot-testing` 1.19.2 as an Xcode-project
+package dependency linked **only** to the app test target
+(`EasySavingTests`), wrote the first snapshot test
+(`Snapshots/ContentViewSnapshotTests.swift`, Swift Testing, `@MainActor`)
+against the placeholder view with a fully pinned rendering contract
+(fixed input, fixed layout, forced light appearance), wired the `snap`
+lane to the suite, and documented the record/verify workflow and pinned
+environment in `docs/TESTING.md`. The task's real deliverable turned out
+to be an investigation: the same test rendered differently under Xcode
+and `xcodebuild`, which produced the repo's snapshot layout policy.
+
+### Decisions made
+
+- **One product linked, not three.** Xcode's add-package sheet offers
+  `SnapshotTesting`, `InlineSnapshotTesting` and
+  `SnapshotTestingCustomDump`; only the first is linked. Unlinked
+  products are never compiled — linking `InlineSnapshotTesting` would
+  have paid swift-syntax's build cost on every clean build for an API
+  nobody decided to use. Note: `Package.resolved` still pins the *whole*
+  dependency graph (swift-syntax, swift-custom-dump,
+  xctest-dynamic-overlay) regardless of which products are linked —
+  resolution and build are different phases; the lockfile entries are
+  expected and harmless.
+- **Dependency lives at the Xcode project level, not in
+  `EasySavingKit/Package.swift`** — the ticket scopes it to the app test
+  target, and Core's tests couldn't render SwiftUI anyway (ADR-002).
+  Only the `xcshareddata` lockfile changed, consistent with the
+  two-lockfile split documented in Task 3.
+- **Snapshot layout policy** (recorded in `docs/TESTING.md`): screens
+  use `.fixed(width: 390, height: 844)`; DesignSystem components (Sprint
+  2+) will use `.sizeThatFits`; **`.device(config:)` is banned** — see
+  findings. Corollary discovered via a zero-size render error: a
+  screen-shaped SwiftUI view must never "measure itself"
+  (`.sizeThatFits` on a hosted screen returns zero); the canvas size is
+  part of the test contract.
+- **Exact precision, no tolerances.** `precision`/`perceptualPrecision`
+  stay at their defaults; introducing a tolerance requires a documented
+  justification in the PR. Rationale: our one observed nondeterminism
+  was geometric (a variable to eliminate), not antialiasing noise (a
+  difference to tolerate), and a pixel-fraction tolerance is exactly the
+  size of a small real regression.
+- **`swiftTestingTestCaseNames` stays enabled, knowingly** (see
+  findings for the incident). Consequences accepted: `@Test` function
+  names are backticked raw identifiers, and snapshot artifact names are
+  their dash-sanitized form (`placeholder-view-light.1.png`).
+- **`snap` lane filters by `only_testing:` at `Target/Suite`
+  granularity** — the lane is the executable definition of "the snapshot
+  suite" that CI will call in Task 5. Accepted cost: each new snapshot
+  suite must be added to the list; migrating to a dedicated
+  `.xctestplan` is the planned upgrade once the list outgrows 2–3
+  entries. `only_testing` filters execution, not compilation — the lane
+  builds the full scheme.
+- **Structure precedents:** snapshot tests live under
+  `EasySavingTests/Snapshots/` (suites will grow parallel to
+  `DesignSystem/`); `__Snapshots__/` references are committed; repo docs
+  are SCREAMING_CASE by precedent (`TESTING.md`, not the ticket's
+  `testing.md`).
+
+### Problems / findings during implementation
+
+- **Snapshot reference identity is derived from source code.** The
+  reference path is `<test file name>/<test function name>.<assert
+  index>.png`; renaming either orphans the reference and silently
+  records a new one. Learned twice in one task: first fixing a typo
+  (`ContenView…`), then when **SwiftFormat's `swiftTestingTestCaseNames`
+  rule renamed the test function itself** (camelCase → backticked raw
+  identifier) and invalidated the reference recorded minutes earlier.
+  A formatter that renames identifiers stretches the Task 3 "SwiftFormat
+  owns formatting" contract — accepted because the rule only touches
+  `@Test` functions and its behavior is version-pinned by
+  `Package.resolved` (no silent drift, unlike a brew-installed binary).
+- **The headline finding: `.device(config:)` layouts are
+  runner-sensitive.** References recorded from Xcode failed under
+  `bundle exec fastlane snap` and vice versa, each runner perfectly
+  self-consistent. Isolated empirically: both runs used the same
+  simulator and runtime (proven via `xcresulttool` device info: iPhone
+  17, iOS 26.5 23F77); headless-vs-windowed was ruled out (fails with
+  Simulator.app open); pixel forensics showed a **pure vertical
+  translation of 10 px @3x (3.33 pt) with zero residual diff** after
+  shift correction — i.e. the same render positioned differently,
+  implying a ~6.7 pt disagreement in effective top safe-area inset.
+  Mechanism (from the library source): `.device` simulates safe area by
+  overriding `UIWindow.safeAreaInsets` on a scene-less window — a hack
+  UIKit honors differently depending on the host process environment,
+  and whose fragility the library's own code comments admit. Upstream
+  issue family: swift-snapshot-testing #810, #180, #430, discussion
+  #558; the exact divergence lives inside UIKit and is not publicly
+  documented. Resolution: eliminate the variable (`.fixed` layout), not
+  tolerate it (precision) — verified deterministic across both runners
+  afterwards.
+- **CLI environment note:** system Ruby shadowing struck again (a shell
+  without the Homebrew PATH picked `/usr/bin/bundle`, Ruby 2.6, and
+  failed on the bundler version) — same root cause as Task 3, worth
+  remembering for CI runner setup in Task 5.
+
+### Verification
+
+- Record → verify cycle deterministic: first run records and fails by
+  design, second run green, **in both runners against the same
+  reference** (the cross-runner check is now part of the definition of
+  done for snapshot changes).
+- `bundle exec fastlane lint`, `test` and `snap` green locally.
+- Reference PNG reviewed by eye before committing; no orphaned
+  references left in `__Snapshots__/`.
+
+### Follow-up generated (not resolved in this task)
+
+- **Task 5 (CI):** confirm CLI-recorded references pass on the CI
+  runner (same pinned simulator/OS); decide whether `snap` runs as a
+  separate job or inside `test` (the lane builds the full scheme either
+  way).
+- **Sprint 2:** DesignSystem component suites adopt `.sizeThatFits`;
+  new suites must be added to the `snap` lane's `only_testing` list;
+  move to a `.xctestplan` when that list outgrows 2–3 entries.
+- **Sprint 5:** dark mode / Dynamic Type snapshot variants (per plan).
+- **Watch upstream:** if swift-snapshot-testing/Xcode fix `.device`
+  safe-area fidelity, re-evaluate the layout ban for full-screen
+  snapshots that genuinely need safe-area realism.
+- Minor: the pinned device string (`"iPhone 17"`) is now repeated in
+  the Fastfile (`test` + `snap`) — extract a constant next time the
+  file is touched; the `snap` lane `desc` still references the old
+  `docs/testing.md` filename (pre-rename) and needs the same touch.
