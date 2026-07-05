@@ -51,3 +51,22 @@ bundle install
 
 SwiftLint and SwiftFormat need no separate installation: they are consumed
 as SPM plugins pinned by `Package.resolved`.
+
+### Quality lanes
+
+The same commands run locally and in CI:
+
+```bash
+bundle exec fastlane lint   # SwiftFormat (check mode) + SwiftLint (strict)
+bundle exec fastlane test   # package tests + app tests on the pinned simulator
+bundle exec fastlane snap   # snapshot suite only
+```
+
+### Testing
+
+Unit tests use Swift Testing; snapshot tests use
+[swift-snapshot-testing](https://github.com/pointfreeco/swift-snapshot-testing)
+(app test target only), verified against a pinned rendering environment.
+Before recording or re-recording snapshot references, read
+[docs/TESTING.md](docs/TESTING.md) — the pinned simulator and the
+record/verify workflow live there.
