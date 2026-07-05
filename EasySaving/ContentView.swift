@@ -11,7 +11,7 @@ import EasySavingCore
 struct ContentView: View {
     let linkProof: String
     var body: some View {
-        VStack() {
+        VStack {
             Text(CorePlaceholder().text)
             Text(linkProof)
         }
