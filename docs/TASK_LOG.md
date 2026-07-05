@@ -206,3 +206,122 @@ experiments — with a finding that corrects the ticket's own premise.
 - The ticket text in SPRINT_PLAN.md was *not* amended (it is a historical
   record); this entry is the canonical account of what the boundary check
   actually proves.
+
+---
+
+## Task 3: SwiftLint + SwiftFormat + Fastlane lanes
+
+**Branch/PR:** `0-3-linting-and-fastlane`
+**References:** ADR-002 (boundary enforcement), ADR-009 (amended in this
+task)
+
+### Summary
+
+Made code quality a command: SwiftLint and SwiftFormat are consumed as SPM
+command plugins declared in `EasySavingKit/Package.swift`, configured by
+`.swiftlint.yml` / `.swiftformat` at the repo root, and orchestrated by
+three Fastlane lanes (`lint`, `test`, `snap`) that are the exact commands
+CI will run in Task 5. The SwiftLint `custom_rules` now enforce the
+ADR-002 module boundary that the compiler cannot (closing the Task 2
+follow-up), and they caught a real violation on their first run. A
+minimal `README.md` was created (the repo had none) documenting setup and
+lanes. All placeholder code was reformatted; both lanes run green
+locally.
+
+### Decisions made
+
+- **Binary delivery: SPM plugins, not Homebrew/Mint/downloaded binaries.**
+  Everything is self-contained and pinned by `Package.resolved`; no
+  machine-level tooling to keep in sync. Recorded as an amendment to
+  ADR-009, which satisfies the "no third-party dependency without an ADR
+  entry" rule — the plugins are build-time tools, never linked into
+  shipping code. Plugins are declared in `EasySavingKit/Package.swift`
+  because it is the only package in the repo; revisit if a dedicated
+  tooling package ever becomes justified.
+- **Two lockfiles, both tracked.** The CLI writes
+  `EasySavingKit/Package.resolved`; Xcode writes
+  `EasySaving.xcodeproj/.../xcshareddata/swiftpm/Package.resolved` at
+  workspace level. Same purpose, different resolver; `xcshareddata` is
+  the shared (committed) half of Xcode state, unlike `xcuserdata`.
+- **Ownership split between the tools:** SwiftFormat owns formatting;
+  SwiftLint owns semantic/style rules and architecture rules. SwiftLint
+  rules that overlap with SwiftFormat are explicitly disabled so the two
+  tools can never disagree about the same line.
+- **Single `.swiftlint.yml`; strictness is a lane concern.** The lane
+  passes `--strict` (warnings become errors) instead of maintaining a
+  duplicated CI config. Since the lane is the same command locally and in
+  CI, strict mode applies everywhere by construction.
+- **Boundary rules as `custom_rules`:** `core_boundary` bans
+  SwiftUI/SwiftData/UIKit imports in `EasySavingCore`; `data_boundary`
+  bans UI framework imports in `EasySavingData`. This moves the boundary
+  from review-enforced to tooling-enforced (the compiler tier is
+  unreachable for ambient SDK frameworks, per Task 2's finding).
+- **`.swiftformat` stays near defaults on purpose** (swiftversion 6.2 +
+  excludes): fewer deviations, less bikeshedding.
+- **No lint/format in Xcode build phases.** Run Script phases pay lint on
+  every incremental build, fight the Xcode 15+ script sandbox, and
+  invoking SwiftPM inside xcodebuild is reentrant; a formatter rewriting
+  sources during a build breaks build determinism outright. Enforcement
+  lives at the integration point (CI + branch protection, Task 5);
+  `SwiftLintBuildToolPlugin` (in-editor feedback) and a pre-commit hook
+  running the lint lane are documented as deliberate deferrals.
+- **CI never rewrites code.** The lint lane uses check modes only
+  (`swiftformat --lint`, `swiftlint lint`); formatting is a local,
+  explicit developer action. Format check runs before lint in the lane:
+  cheapest check first, fail fast.
+
+### Problems / findings during implementation
+
+- **System Ruby (2.6, EOL) cannot install modern fastlane** and its gem
+  dir is root-owned. Fixed by installing Homebrew + `brew install ruby`
+  (user-writable prefix, no sudo). rbenv/mise with a `.ruby-version` is
+  the team-scale answer; one machine didn't justify it.
+- **`sourcekitdInProc` fatal error was the toolchain, not the sandbox.**
+  SwiftLint crashed loading SourceKit because `xcode-select` pointed at
+  `/Library/Developer/CommandLineTools`, which ships no
+  `sourcekitdInProc.framework`. `--disable-sandbox` was tested and made
+  no difference; the fix is `sudo xcode-select -s
+  /Applications/Xcode.app/Contents/Developer`. SwiftLint needs SourceKit
+  here precisely because of `custom_rules` (syntax map to avoid matching
+  inside comments/strings).
+- **Each plugin runs its binary from a different working directory**
+  (empirical finding; documented nowhere): SwiftLint runs from the
+  package directory, SwiftFormat from the invocation directory. Hence the
+  two separate path lists in the Fastfile.
+- **The SPM plugin write sandbox is deny-by-default outside the package.**
+  `--allow-writing-to-package-directory` covers only the package dir;
+  formatting app-target sources requires `--allow-writing-to-directory .`.
+  The lint lane needs no write grant at all — a least-privilege split the
+  sandbox enforced for us.
+- **The SwiftLint command plugin lints every file twice** (forwarded
+  paths are also appended by the plugin). Cosmetic duplication in output;
+  accepted rather than fought.
+- **`core_boundary` caught a real `import SwiftUI` in
+  `CorePlaceholder.swift`** (uncommitted local edit) on its first
+  execution — the rule paid for the task before the task was finished.
+- **CLI test noise, all benign:** `IDELaunchParametersSnapshot / no
+  debugger version` spam (xcodebuild queries LLDB, which doesn't exist in
+  CLI runs) and one transient `xctrunner` launch failure on a simulator
+  clone (parallel UI testing race; xcodebuild recovered, suite green).
+
+### Verification
+
+- `bundle exec fastlane lint` and `bundle exec fastlane test` green
+  locally; SwiftFormat check reports 0 files requiring formatting.
+- Test pyramid measured on this repo: package tests ~3 s vs app-target
+  tests ~111 s (of which ~87 s are template UI tests) — two orders of
+  magnitude, with numbers to cite when concentrating tests in the package
+  during Sprints 1–2.
+
+### Follow-up generated (not resolved in this task)
+
+- **Task 4:** the `snap` lane is a placeholder; wire it to the snapshot
+  suite when the infrastructure lands.
+- **Task 5 (CI):** pre-grant plugin trust/permissions (no interactive
+  prompt on runners); consider `parallel_testing: false` and
+  `number_of_retries: 1` in `run_tests` for slower runners; SPM cache
+  keyed on `Package.resolved`; add the CI badge to the README.
+- **Deferred by decision:** `SwiftLintBuildToolPlugin` per target for
+  in-editor violations; pre-commit hook running `fastlane lint`.
+- Minor: simulator runtime fallback notice (`Runtime build '23F81a' not
+  found`) — update runtimes via Xcode Settings → Components someday.
