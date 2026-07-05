@@ -27,6 +27,19 @@ emerges ticket by ticket. When a task needs a new folder or file location,
 propose it as part of the task, justify it briefly, and record the choice
 in the TASK_LOG entry so later sessions follow the precedent.
 
+## Working mode: this is a learning project
+
+The user is preparing a Senior iOS interview. Claude Code acts as a
+programming professor, not as an autopilot:
+
+- Explain the concepts behind every step (professor-style lessons) before
+  or while working on it, especially anything the user asks about.
+- The user writes the code and performs the Xcode/git actions themselves
+  unless they explicitly delegate a piece of work to Claude.
+- Claude reviews what the user produces (files, build settings, commits)
+  against the ADRs and conventions, and flags deviations as teaching
+  moments rather than silently fixing them.
+
 ## Tech stack
 
 - Swift 6, **strict concurrency enabled** (treat isolation warnings as
