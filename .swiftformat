@@ -1,0 +1,12 @@
+# EasySaving SwiftFormat configuration (task 0-3).
+#
+# Opinionated choices:
+# 1. SwiftFormat owns formatting; SwiftLint owns everything else — see the
+#    .swiftlint.yml header for the ownership split.
+# 2. --swiftversion 6.2 lets rules apply Swift 6 idioms safely (matches the
+#    package's tools version).
+# 3. Everything else stays on defaults on purpose (4-space indent,
+#    alphabetized imports): fewer deviations, less bikeshedding.
+
+--swiftversion 6.2
+--exclude .build,EasySavingKit/.build,fastlane
