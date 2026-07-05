@@ -5,6 +5,11 @@ import PackageDescription
 let package = Package(
     name: "EasySavingKit",
     platforms: [.iOS(.v17)],
+    dependencies: [
+        // Tooling-only command plugins; never linked into any product.
+        .package(url: "https://github.com/SimplyDanny/SwiftLintPlugins", from: "0.57.0"),
+        .package(url: "https://github.com/nicklockwood/SwiftFormat", from: "0.55.0"),
+    ],
     products: [
         .library(name: "EasySavingCore", targets: ["EasySavingCore"]),
         .library(name: "EasySavingData", targets: ["EasySavingData"]),
@@ -15,9 +20,5 @@ let package = Package(
         .testTarget(name: "EasySavingCoreTests", dependencies: ["EasySavingCore"]),
         .testTarget(name: "EasySavingDataTests", dependencies: ["EasySavingData"]),
     ],
-    dependencies: [
-        // Tooling-only command plugins; never linked into any product.
-        .package(url: "https://github.com/SimplyDanny/SwiftLintPlugins", from: "0.57.0"),
-        .package(url: "https://github.com/nicklockwood/SwiftFormat", from: "0.55.0"),
-    ],
+    
 )
