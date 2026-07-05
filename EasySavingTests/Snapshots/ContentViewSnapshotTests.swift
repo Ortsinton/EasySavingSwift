@@ -16,7 +16,7 @@ struct ContentViewSnapshotTests {
     func `placeholder view light`() {
         assertSnapshot(of: ContentView(linkProof: "snapshot-fixture"),
                        as: .image(
-                           layout: .device(config: .iPhone13),
+                           layout: .fixed(width: 390, height: 844),
                            traits: UITraitCollection(userInterfaceStyle: .light),
                        ))
     }

@@ -28,8 +28,14 @@ platform :ios do
     )
   end
 
-  desc "Snapshot tests only (infrastructure lands in task 0-4)"
+  desc "Snapshot tests only, on the pinned simulator (docs/testing.md)"
   lane :snap do
-    UI.important("No snapshot tests yet — snapshot infrastructure arrives in task 0-4.")
+    run_tests(
+      project: "EasySaving.xcodeproj",
+      scheme: "EasySaving",
+      device: "iPhone 17",
+      only_testing: ["EasySavingTests/ContentViewSnapshotTests"],
+      parallel_testing: false
+    )
   end
 end
