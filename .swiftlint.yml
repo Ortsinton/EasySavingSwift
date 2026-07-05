@@ -1,0 +1,45 @@
+# EasySaving SwiftLint configuration (task 0-3).
+#
+# Opinionated choices, most important first:
+# 1. custom_rules enforce the ADR-002 module boundary that the compiler
+#    cannot: SDK frameworks (SwiftUI/SwiftData/UIKit) are ambient and
+#    importable from anywhere, so the ban must live in tooling (TASK_LOG 0-2).
+# 2. Formatting rules overlapping with SwiftFormat are disabled — one owner
+#    per concern, so the two tools never fight over the same line.
+# 3. Single config file: CI promotes warnings to errors with `--strict` in
+#    the Fastlane lane instead of maintaining a duplicated CI profile.
+# 4. force_unwrapping is opted in as an error-by-CI: a crash-by-design
+#    operator has no place in a finance app.
+
+excluded:
+  - .build
+  - EasySavingKit/.build
+  - fastlane
+
+disabled_rules:
+  - trailing_whitespace  # owned by SwiftFormat
+  - trailing_comma       # owned by SwiftFormat
+  - vertical_whitespace  # owned by SwiftFormat
+  - opening_brace        # owned by SwiftFormat
+
+opt_in_rules:
+  - force_unwrapping
+  - empty_count
+
+line_length:
+  warning: 120
+  ignores_comments: true
+
+custom_rules:
+  core_boundary:
+    name: "Core boundary (ADR-002)"
+    regex: '^\s*import (SwiftUI|SwiftData|UIKit)\b'
+    included: ".*/EasySavingCore/.*\\.swift"
+    message: "EasySavingCore must not import UI or persistence frameworks (ADR-002)."
+    severity: error
+  data_boundary:
+    name: "Data boundary (ADR-002)"
+    regex: '^\s*import (SwiftUI|UIKit)\b'
+    included: ".*/EasySavingData/.*\\.swift"
+    message: "EasySavingData must not import UI frameworks (ADR-002)."
+    severity: error

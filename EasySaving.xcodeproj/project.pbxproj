@@ -30,6 +30,10 @@
 
 /* Begin PBXFileReference section */
 		494CDD332FFA5CC7007FF5E6 /* EasySavingKit */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = EasySavingKit; sourceTree = "<group>"; };
+		494CDD5F2FFA6CAB007FF5E6 /* .swiftlint.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = .swiftlint.yml; sourceTree = "<group>"; };
+		494CDD602FFA6EFB007FF5E6 /* .swiftformat */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = .swiftformat; sourceTree = "<group>"; };
+		494CDD612FFA6F24007FF5E6 /* Gemfile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Gemfile; sourceTree = "<group>"; };
+		494CDD652FFABC06007FF5E6 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = README.md; sourceTree = "<group>"; };
 		49D20AC12FF803940020CBB6 /* EasySaving.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EasySaving.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		49D20AD02FF803950020CBB6 /* EasySavingTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EasySavingTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		49D20ADA2FF803950020CBB6 /* EasySavingUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EasySavingUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -37,6 +41,11 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		494CDD632FFABB3E007FF5E6 /* fastlane */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = fastlane;
+			sourceTree = "<group>";
+		};
 		49D20AC32FF803940020CBB6 /* EasySaving */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = EasySaving;
@@ -96,6 +105,11 @@
 		49D20AB82FF803940020CBB6 = {
 			isa = PBXGroup;
 			children = (
+				494CDD652FFABC06007FF5E6 /* README.md */,
+				494CDD632FFABB3E007FF5E6 /* fastlane */,
+				494CDD602FFA6EFB007FF5E6 /* .swiftformat */,
+				494CDD612FFA6F24007FF5E6 /* Gemfile */,
+				494CDD5F2FFA6CAB007FF5E6 /* .swiftlint.yml */,
 				49D20AED2FF804190020CBB6 /* docs */,
 				49D20AC32FF803940020CBB6 /* EasySaving */,
 				494CDD332FFA5CC7007FF5E6 /* EasySavingKit */,

@@ -310,6 +310,16 @@ Bitrise, Fastlane) and linters as part of the codebase definition.
 - TestFlight lane defined but disabled (no distribution need in MVP) —
   present in the repo as evidence of release-pipeline literacy.
 
+**Amendment (Sprint 0, task 0-3):** SwiftLint and SwiftFormat are consumed
+as SPM command plugins declared in `EasySavingKit/Package.swift`
+(`SimplyDanny/SwiftLintPlugins`, the binary distribution recommended by
+SwiftLint, and `nicklockwood/SwiftFormat`). Versions are pinned by
+`Package.resolved` like any other dependency, so linting the repo needs no
+extra package manager (Homebrew/Mint). Both are build-time tools, never
+linked into shipping code; they are recorded here to satisfy the
+"ADR entry before any third-party dependency" rule. Fastlane itself is
+pinned via `Gemfile.lock`.
+
 **Consequences:** Every PR proves the three test levels run in CI, which is
 verbatim what the job description asks to have done before.
 

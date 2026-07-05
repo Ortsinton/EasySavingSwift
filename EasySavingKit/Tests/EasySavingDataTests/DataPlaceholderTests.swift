@@ -1,15 +1,15 @@
 //
-//  Test.swift
+//  DataPlaceholderTests.swift
 //  EasySavingKit
 //
 //  Created by Jorge Sirvent on 5/7/26.
 //
 
-import Testing
 @testable import EasySavingData
+import Testing
 
 struct Test {
-    @Test func placeholderExposesText() async throws {
+    @Test func `placeholder exposes text`() {
         #expect(DataPlaceholder().text == "Core Linked - Data linked")
     }
 }

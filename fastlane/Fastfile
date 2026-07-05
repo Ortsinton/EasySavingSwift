@@ -1,0 +1,35 @@
+default_platform(:ios)
+
+# Each plugin runs its binary from a different working directory
+# (empirical finding, task 0-3): SwiftLint from the package dir,
+# SwiftFormat from the invocation dir. Hence the two path sets.
+SWIFTFORMAT_PATHS = "EasySaving EasySavingTests EasySavingUITests EasySavingKit/Sources EasySavingKit/Tests"
+SWIFTLINT_PATHS = "../EasySaving ../EasySavingTests ../EasySavingUITests Sources Tests"
+
+platform :ios do
+  desc "SwiftFormat (check mode) + SwiftLint (strict). Same command locally and in CI."
+  lane :lint do
+    Dir.chdir("..") do
+      sh("swift package --package-path EasySavingKit plugin --allow-writing-to-package-directory swiftformat --lint --config .swiftformat --cache ignore #{SWIFTFORMAT_PATHS}")
+      sh("swift package --package-path EasySavingKit plugin --allow-writing-to-package-directory swiftlint lint --strict --config ../.swiftlint.yml #{SWIFTLINT_PATHS}")
+    end
+  end
+
+  desc "Build and run all tests: EasySavingKit via swift test, then the app scheme"
+  lane :test do
+    Dir.chdir("..") do
+      sh("swift test --package-path EasySavingKit")
+    end
+    run_tests(
+      project: "EasySaving.xcodeproj",
+      scheme: "EasySaving",
+      device: "iPhone 17",
+      parallel_testing: false
+    )
+  end
+
+  desc "Snapshot tests only (infrastructure lands in task 0-4)"
+  lane :snap do
+    UI.important("No snapshot tests yet — snapshot infrastructure arrives in task 0-4.")
+  end
+end

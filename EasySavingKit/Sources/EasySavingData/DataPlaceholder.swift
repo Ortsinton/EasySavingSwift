@@ -9,8 +9,8 @@ import EasySavingCore
 
 public struct DataPlaceholder: Sendable {
     public let text: String
-    
+
     public init() {
-        self.text = CorePlaceholder().text + " - Data linked"
+        text = CorePlaceholder().text + " - Data linked"
     }
 }

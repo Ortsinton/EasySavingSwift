@@ -1,15 +1,15 @@
 //
-//  Test.swift
+//  CorePlaceholderTests.swift
 //  EasySavingKit
 //
 //  Created by Jorge Sirvent on 5/7/26.
 //
 
-import Testing
 @testable import EasySavingCore
+import Testing
 
 struct CorePlaceholderTests {
-    @Test func placeholderExposesText() async throws {
+    @Test func `placeholder exposes text`() {
         #expect(CorePlaceholder().text == "Core Linked")
     }
 }
