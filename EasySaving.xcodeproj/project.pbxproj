@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		494CDD362FFA5CEB007FF5E6 /* EasySavingCore in Frameworks */ = {isa = PBXBuildFile; productRef = 494CDD352FFA5CEB007FF5E6 /* EasySavingCore */; };
+		494CDD382FFA5CEB007FF5E6 /* EasySavingData in Frameworks */ = {isa = PBXBuildFile; productRef = 494CDD372FFA5CEB007FF5E6 /* EasySavingData */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		49D20AD12FF803950020CBB6 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -24,6 +29,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		494CDD332FFA5CC7007FF5E6 /* EasySavingKit */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = EasySavingKit; sourceTree = "<group>"; };
 		49D20AC12FF803940020CBB6 /* EasySaving.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EasySaving.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		49D20AD02FF803950020CBB6 /* EasySavingTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EasySavingTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		49D20ADA2FF803950020CBB6 /* EasySavingUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EasySavingUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -58,6 +64,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				494CDD382FFA5CEB007FF5E6 /* EasySavingData in Frameworks */,
+				494CDD362FFA5CEB007FF5E6 /* EasySavingCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,15 +86,24 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		494CDD342FFA5CEB007FF5E6 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		49D20AB82FF803940020CBB6 = {
 			isa = PBXGroup;
 			children = (
 				49D20AED2FF804190020CBB6 /* docs */,
 				49D20AC32FF803940020CBB6 /* EasySaving */,
+				494CDD332FFA5CC7007FF5E6 /* EasySavingKit */,
 				49D20AD32FF803950020CBB6 /* EasySavingTests */,
 				49D20ADD2FF803950020CBB6 /* EasySavingUITests */,
 				49D20AC22FF803940020CBB6 /* Products */,
 				49D20AF32FF805B10020CBB6 /* CLAUDE.md */,
+				494CDD342FFA5CEB007FF5E6 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -120,6 +137,8 @@
 			);
 			name = EasySaving;
 			packageProductDependencies = (
+				494CDD352FFA5CEB007FF5E6 /* EasySavingCore */,
+				494CDD372FFA5CEB007FF5E6 /* EasySavingData */,
 			);
 			productName = EasySaving;
 			productReference = 49D20AC12FF803940020CBB6 /* EasySaving.app */;
@@ -623,6 +642,17 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		494CDD352FFA5CEB007FF5E6 /* EasySavingCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = EasySavingCore;
+		};
+		494CDD372FFA5CEB007FF5E6 /* EasySavingData */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = EasySavingData;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 49D20AB92FF803940020CBB6 /* Project object */;
 }

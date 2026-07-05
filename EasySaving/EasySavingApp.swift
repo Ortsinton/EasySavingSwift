@@ -6,12 +6,13 @@
 //
 
 import SwiftUI
+import EasySavingData
 
 @main
 struct EasySavingApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView(linkProof: DataPlaceholder().text)
         }
     }
 }

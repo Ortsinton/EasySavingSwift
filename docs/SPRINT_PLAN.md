@@ -54,7 +54,7 @@ linking the ADRs. Optional stretch: deep-link demo through the coordinator.
 
 Format per card: Title / Objective / Acceptance criteria / References.
 Suggested board flow unchanged: To Do → Doing → Done, one branch per card
-(`task-N-short-name`).
+(`S-N-short-name`, sprint-first numbering — see CLAUDE.md workflow).
 
 ---
 
