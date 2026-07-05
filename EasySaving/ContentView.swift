@@ -6,13 +6,18 @@
 //
 
 import SwiftUI
+import EasySavingCore
 
 struct ContentView: View {
+    let linkProof: String
     var body: some View {
-        Text("EasySaving")
+        VStack() {
+            Text(CorePlaceholder().text)
+            Text(linkProof)
+        }
     }
 }
 
 #Preview {
-    ContentView()
+    ContentView(linkProof: "PlaceholderText")
 }

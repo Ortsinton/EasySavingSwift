@@ -100,7 +100,9 @@ decides what that means (push, sheet, nothing). See ADR-003/ADR-004.
 
 1. Each task comes from a Trello card (EasySaving board, "To Do" list)
    with Objective + Acceptance criteria + ADR references.
-2. Create a new branch per task: `task-N-short-name`
+2. Create a new branch per task: `S-N-short-name`, where `S` is the
+   sprint number and `N` the task number (e.g. `0-2-EasySavingKit`).
+   Sprint-first numbering keeps branches sorted chronologically.
 3. When done, verify: `Fastlane` test lane green (build + SwiftLint +
    SwiftFormat + unit/snapshot tests) before considering the task finished
 4. Descriptive commit referencing the task, e.g.:

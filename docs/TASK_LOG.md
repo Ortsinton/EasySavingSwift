@@ -104,3 +104,105 @@ under `docs/archive/` with a `-kmp` suffix.
 - **Task 2 must replace the placeholder's content**: the ticket requires
   the placeholder view to consume one public type from each Kit target to
   prove end-to-end linking.
+
+---
+
+## Task 2: Create EasySavingKit package and verify the module boundary
+
+**Branch/PR:** `0-2-EasySavingKit` — first branch under the new
+`S-N-short-name` convention (see Decisions).
+**References:** ADR-002, ADR-007, ADR-008
+
+### Summary
+
+Created the local SPM package `EasySavingKit` at the repo root with the
+two library targets mandated by ADR-002 (`EasySavingCore` with no
+dependencies, `EasySavingData` depending on Core) plus Swift Testing test
+targets for each. Wired both products into the app target. Each source
+target ships one temporary public placeholder type
+(`CorePlaceholder`, `DataPlaceholder` — the latter consumes the former,
+proving the Data → Core arrow); the app's placeholder view displays both,
+proving end-to-end linking. Ran the ticket's deliberate boundary
+experiments — with a finding that corrects the ticket's own premise.
+
+### Decisions made
+
+- **Package location: repo root (`EasySavingKit/`), no intermediate
+  `Packages/` folder.** With a single package the extra nesting is
+  ceremony. Revisit if a second package ever appears (ADR-002 names
+  target-per-feature as the natural next slice).
+- **`swift-tools-version: 6.2`** — targets compile in Swift 6 language
+  mode by default, matching the app project. `platforms: [.iOS(.v17)]`
+  matches the app's deployment target.
+- **Default actor isolation (resolves Task 1 follow-up):** package targets
+  keep the compiler default (nonisolated); ViewModels will be annotated
+  `@MainActor` explicitly when they land. Rationale: Core mixes
+  presentation logic (main-actor) with use cases and repository protocols
+  that must stay actor-agnostic so `ModelActor` repositories can do
+  off-main work (ADR-003). The app target keeps the template's
+  `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` — the UI layer is exactly
+  the intended use case for module-wide MainActor default.
+- **Views consume Core directly; Data reaches views only as plain data.**
+  `ContentView` imports `EasySavingCore` and instantiates
+  `CorePlaceholder`; `EasySavingApp` acts as the *embryonic composition
+  root* (until `AppDependencies.swift` exists, Sprint 2), imports
+  `EasySavingData` and injects `DataPlaceholder().text` as a `String`.
+  Precedent recorded: views are infrastructure-agnostic, but Core is the
+  view's vocabulary — "agnostic to Data" must not be over-rotated into
+  "agnostic to the domain".
+- **Branch naming convention changed** from `task-N-short-name` to
+  `S-N-short-name` (sprint-first, e.g. `0-2-EasySavingKit`) so branches
+  sort chronologically. CLAUDE.md and SPRINT_PLAN.md updated.
+- **Swift Testing style:** no `test` prefix on test functions (discovery
+  is driven by `@Test`, the XCTest naming convention is dead weight).
+
+### Problems / findings during implementation
+
+- **The ticket's boundary claim is false as written.** Acceptance
+  criterion said a deliberate `import SwiftUI` inside Core "fails the
+  build". Verified empirically: **it compiles.** Platform SDK frameworks
+  (SwiftUI, SwiftData, UIKit, …) are ambient — visible to every module
+  compiled against the SDK; SPM's `dependencies:` only gates *package*
+  modules. The compiler-enforced boundary is real but narrower than the
+  ticket implied:
+  - `import EasySavingData` inside Core → `no such module` (undeclared
+    package modules are invisible), and declaring it in `Package.swift`
+    would be rejected as a dependency cycle. Two independent lines of
+    defense.
+  - `import SwiftUI` inside Core → compiles silently. Enforcement must be
+    tooling: verified clean via grep for this task
+    (`grep -rn 'import \(SwiftUI\|SwiftData\|UIKit\)' Sources/EasySavingCore/`);
+    a SwiftLint `custom_rules` entry scoped to
+    `EasySavingKit/Sources/EasySavingCore` is the permanent fix, deferred
+    to Task 3. (Noted for interviews: building Core on Linux in CI, where
+    UI/persistence frameworks don't exist, turns this into a true compile
+    error; deliberately not adopted here — disproportionate.)
+- **First draft of the placeholder wiring violated the project's own
+  import convention**: `ContentView` imported `EasySavingData` directly.
+  Caught in review, not by the compiler — intra-app-target conventions
+  are social, exactly as ADR-002 warns. The fix produced the composition
+  root precedent above.
+- **`public` type ≠ usable type:** the memberwise initializer of a public
+  struct is `internal`; placeholders needed explicit `public init()` to
+  be constructible from the app target.
+
+### Verification
+
+- `swift build` / `swift test` green from the package directory (2 tests,
+  2 suites — package is buildable standalone, no Xcode required).
+- App builds and runs on simulator showing both placeholder texts.
+- Boundary grep over `Sources/EasySavingCore/`: clean.
+
+### Follow-up generated (not resolved in this task)
+
+- **Task 3:** add the SwiftLint custom rule forbidding
+  SwiftUI/SwiftData/UIKit imports inside `EasySavingCore` (and consider
+  one for `EasySavingData` vs SwiftUI).
+- **Sprint 1:** delete `CorePlaceholder`, `DataPlaceholder` and the
+  `linkProof` wiring when the first real domain types and repositories
+  land; `EasySavingApp`'s composition-root role moves to
+  `AppDependencies.swift` (ADR-007) when real dependencies exist
+  (Sprint 2).
+- The ticket text in SPRINT_PLAN.md was *not* amended (it is a historical
+  record); this entry is the canonical account of what the boundary check
+  actually proves.
