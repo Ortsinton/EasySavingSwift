@@ -5,8 +5,8 @@
 //  Created by Jorge Sirvent on 3/7/26.
 //
 
-import SwiftUI
 import EasySavingData
+import SwiftUI
 
 @main
 struct EasySavingApp: App {
