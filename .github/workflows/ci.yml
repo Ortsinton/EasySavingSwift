@@ -10,14 +10,17 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Both jobs need the pinned toolchain: xcodebuild for tests, and the
+# SPM command plugins (SwiftFormat/SwiftLint) compile against the
+# selected Xcode too.
 env:
   DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
 
 jobs:
-  ci:
-    name: lint-build-test
+  lint:
+    name: lint
     runs-on: macos-26
-    timeout-minutes: 45
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
 
@@ -25,14 +28,38 @@ jobs:
         with:
           bundler-cache: true # installs the Gemfile.lock bundle, cached; reads .ruby-version
 
-      - name: Restore SPM build & plugin binaries
+      # Cache keys are job-scoped: both jobs write to EasySavingKit/.build
+      # but with different contents (plugin binaries here, Kit build +
+      # snapshot-testing graph in build-test). Actions cache entries are
+      # immutable — a shared key would leave one job restoring the other
+      # job's partial cache forever.
+      - name: Restore SPM plugin binaries
         uses: actions/cache@v4
         with:
           path: EasySavingKit/.build
-          key: spm-xcode26.6-${{ hashFiles('**/Package.resolved') }}
-          restore-keys: spm-xcode26.6-
+          key: spm-lint-xcode26.6-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: spm-lint-xcode26.6-
 
       - run: bundle exec fastlane lint
+
+  test:
+    name: test
+    needs: lint
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: Restore SPM build
+        uses: actions/cache@v4
+        with:
+          path: EasySavingKit/.build
+          key: spm-test-xcode26.6-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: spm-test-xcode26.6-
 
       - run: bundle exec fastlane test
 
