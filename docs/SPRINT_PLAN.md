@@ -175,3 +175,104 @@ by ticket.
   minimum) based on the Sprint 1 goal above.
 
 **References:** CLAUDE.md workflow, ADR-011.
+
+---
+
+## Sprint 1 — Trello tickets
+
+Drafted at Sprint 0 closure (task 0-6). Four linearly dependent cards:
+domain vocabulary first, then the persistence-agnostic seam, then the
+SwiftData representation, then the actor-isolated implementations that
+prove the sprint goal ("the domain exists and survives a restart") —
+no UI anywhere in the sprint.
+
+---
+
+### Task 1 — Domain models: Transaction, Category, Money
+
+**Objective:** Materialize ADR-010 in `EasySavingCore`: the domain
+vocabulary as `Sendable` value types, with unit tests proving the
+conventions rather than just stating them.
+
+**Acceptance criteria:**
+- `Transaction`, `Category` and `Money` structs: `Sendable`, `Equatable`,
+  `Identifiable` where applicable; nested `struct ID: Hashable` typed
+  identifiers over client-generated UUIDs; relationships by id
+  (`Transaction.categoryID`), never embedded objects.
+- `Money` wraps an `Int` amount in minor units plus a currency code. No
+  `Double` anywhere in the domain; no formatting logic (that is a UI-edge
+  concern per ADR-010).
+- Day-granular business dates normalized through an **injected**
+  `Calendar`; explicit `createdAt: Date` for stable ordering.
+- Parameterized Swift Testing suites for `Money` arithmetic edge cases
+  and date normalization (including one DST-boundary case through the
+  injected calendar).
+- `CorePlaceholder` and its `ContentView` usage deleted (0-2 follow-up,
+  Core half).
+- Folder layout inside `EasySavingCore` proposed with the task and
+  recorded in the TASK_LOG entry as precedent.
+
+**References:** ADR-002, ADR-010.
+
+---
+
+### Task 2 — Repository protocols and first use cases
+
+**Objective:** Define the persistence-agnostic seam (repository
+protocols) and the first business operations as use cases, unit-tested
+against hand-written fakes — the testable architecture ADR-007 promises,
+demonstrated without a single framework.
+
+**Acceptance criteria:**
+- `TransactionRepository` and `CategoryRepository` protocols in Core:
+  async, expressed exclusively in domain types.
+- Minimal use-case set: `AddTransactionUseCase` (business validation
+  lives here — never in future ViewModels), `GetTransactionsUseCase`,
+  `DeleteTransactionUseCase`. Naming/shape recorded as precedent.
+- Unit tests with in-memory fake repositories; zero mocking frameworks.
+- Boundary stays green: no new imports in Core beyond
+  Foundation/Observation (`core_boundary` SwiftLint rule).
+
+**References:** ADR-002, ADR-007, ADR-008.
+
+---
+
+### Task 3 — SwiftData @Model classes and mappers
+
+**Objective:** The persistence representation in `EasySavingData`:
+`@Model` reference types plus bidirectional mapping, so domain structs
+never learn that SwiftData exists.
+
+**Acceptance criteria:**
+- `TransactionModel` and `CategoryModel` `@Model` classes (`Model`
+  suffix per convention), living only in `EasySavingData`.
+- Bidirectional mappers with unit tests, including id/date/money
+  round-trip fidelity.
+- `DataPlaceholder` and the `linkProof` wiring in `EasySavingApp`
+  deleted (0-2 follow-up, Data half); the app compiles with a plain
+  placeholder view until Sprint 2 brings real screens.
+- `data_boundary` lint rule stays green.
+
+**References:** ADR-005, ADR-010.
+
+---
+
+### Task 4 — ModelActor repositories with integration tests
+
+**Objective:** Implement the repository protocols as `ModelActor` types
+doing off-main persistence work, and prove the sprint's definition of
+done: data added through the repository survives a "relaunch".
+
+**Acceptance criteria:**
+- Repository implementations as `ModelActor` in `EasySavingData`;
+  strict-concurrency clean — no `@unchecked Sendable`, no
+  `nonisolated(unsafe)`.
+- Integration tests against an in-memory `ModelContainer`: insert →
+  fetch → assert, delete → fetch → assert.
+- Relaunch proof: data written through one container/context is read
+  back through a freshly created one over the same store (simulated
+  restart), asserted in a test.
+- Package remains fully testable standalone via `swift test` (no Xcode
+  required), keeping the package/app test-speed split measured in 0-3.
+
+**References:** ADR-005, ADR-008.
