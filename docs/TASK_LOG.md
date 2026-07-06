@@ -598,6 +598,13 @@ by the PR that lands this entry (see Follow-up).
   pipeline against active protection — that PR is the ticket's evidence.
   From then on, the job names `lint`/`test` are frozen contracts
   (renaming one without updating the protection rule blocks all merges).
+  **Correction (task 0-6):** it did not happen in that order. PR #5 was
+  merged before protection existed; protection was configured right
+  after, as a repository **ruleset** (`lint-test-needed`), not a classic
+  rule — see the 0-6 entry for the mechanism choice and the
+  enforcement-disabled pitfall found on the way. PR #5 stands as the
+  full-pipeline-on-a-trivial-PR evidence; the first merge actually
+  *gated* by the active ruleset is task 0-6's own PR.
 - **Template UI tests cost real CI minutes for zero coverage** (~87 s
   locally, 2–3× on the runner, every PR): replace with the minimal
   ADR-008 happy-path XCUITest when real UI lands (Sprint 2), or delete
@@ -612,3 +619,99 @@ by the PR that lands this entry (see Follow-up).
   (TESTING.md policy).
 - Minor, resolved in the same PR as this entry: `docs/TESTING.md` now
   pins Xcode 26.6 (17F113) explicitly instead of "26.x".
+
+---
+
+## Task 6: Seed TASK_LOG and close Sprint 0
+
+**Branch/PR:** `0-6-close-sprint-0`
+**References:** CLAUDE.md workflow, ADR-011; closes the 0-5 follow-up
+(branch-protection correction)
+
+### Summary
+
+Sprint 0 closure. The ticket assumed the TASK_LOG would be written
+retrospectively at sprint end; in practice it was built incrementally,
+one entry per task — so this task reduced to an audit plus the formal
+handoff. Audited entries 1–5 against the "every structure decision
+recorded as precedent" criterion: complete (see Verification). Corrected
+the 0-5 entry to match what actually happened with branch protection,
+recorded the ruleset decision, added the Sprint 1 ticket text to
+`docs/SPRINT_PLAN.md`, and drafted the four Sprint 1 cards in Trello.
+This task's PR is the first merge gated by the active ruleset — the
+enforcement evidence 0-5 left pending.
+
+### Decisions made
+
+- **TASK_LOG policy formalized: entries are written when a task closes,
+  not at sprint end.** The incremental log already paid for itself
+  (0-4's investigation notes fed 0-5's design directly); the ticket's
+  retrospective framing is superseded.
+- **Branch protection is a repository ruleset, not a classic rule.**
+  Rulesets are the current mechanism (classic is legacy): readable by
+  anyone with repo read access, stackable, with an enforcement status
+  (Active/Evaluate/Disabled). Configuration of record: target
+  `~DEFAULT_BRANCH`; require PR (0 approvals); required status checks
+  `lint` + `test` with strict up-to-date policy; deletions and force
+  pushes blocked; **empty bypass list** — not even admins skip the
+  checks, which is what "green by construction" means.
+- **Sprint plans keep living in the repo:** Sprint 1 tickets recorded in
+  `docs/SPRINT_PLAN.md` following the Sprint 0 precedent — Trello is the
+  operational board, the repo is the memory.
+- **Sprint 1 sliced into four linearly dependent cards** (1-1 domain
+  models → 1-2 protocols + use cases → 1-3 `@Model` + mappers → 1-4
+  `ModelActor` repositories + integration tests). Kept 1-1 and 1-2
+  separate despite their size — the model/use-case boundary deserves its
+  own review. No buffer card for minor technical follow-ups; they
+  resolve in passing or wait.
+
+### Problems / findings during implementation
+
+- **The ruleset UI defaults Enforcement status to "Disabled".** The rule
+  was created correctly and was protecting nothing; caught only because
+  the state was verified via API (`/rules/branches/main` returned `[]`)
+  instead of trusting the UI flow. Same session, second instance of the
+  lesson: verify externally observable state, not the memory of having
+  configured it.
+- **Verifying rulesets needs the rules endpoints.** The legacy
+  `protected` field on the branches API only reflects classic rules
+  (stayed `false` throughout); `/rules/branches/{branch}` lists the
+  effective rules and is readable unauthenticated on public repos.
+
+### Verification
+
+- Precedent audit over entries 1–5, all recorded: build settings at
+  project level (0-1); docs visible in Xcode without target membership
+  (0-1); package at repo root without `Packages/` nesting (0-2);
+  `S-N-short-name` branches (0-2); plugins declared in
+  `EasySavingKit/Package.swift` (0-3); two tracked lockfiles (0-3);
+  single `.swiftlint.yml` with boundary `custom_rules` (0-3); snapshot
+  suites under `EasySavingTests/Snapshots/` with committed
+  `__Snapshots__/` (0-4); SCREAMING_CASE repo docs (0-4); convenience
+  scripts at repo root, outside the Xcode project (0-5); CI job names
+  mirroring fastlane lane names (0-5).
+- Active rules on `main` verified via API after activation: PR required
+  (0 approvals), required checks `lint` + `test` (strict), deletion and
+  force-push blocked.
+- This PR merging is itself the final verification: merge button gated
+  on both checks under the active ruleset.
+
+### Follow-up — Sprint 1 handoff
+
+Deferred items carried into Sprint 1, consolidated from entries 0-2..0-5:
+
+- **1-1:** delete `CorePlaceholder` and its `ContentView` usage;
+  **1-3:** delete `DataPlaceholder` and the `linkProof` wiring in
+  `EasySavingApp` (0-2 follow-up, split by half).
+- **First cache-effectiveness data point** (0-5): compare `lint`/`test`
+  job times of this task's PR against the uncached baseline
+  (1 m 35 s / 13 m 49 s); revisit the cached path set if `test` doesn't
+  improve.
+- Standing deferrals, unchanged owners: `SwiftLintBuildToolPlugin` +
+  pre-commit hook (0-3, by decision); DesignSystem snapshot suites with
+  `.sizeThatFits` and `.xctestplan` migration (0-4 → Sprint 2); template
+  UI tests replaced by the minimal ADR-008 happy path (0-5 → Sprint 2);
+  dark mode / Dynamic Type snapshot variants (Sprint 5); watch
+  `macos-26` GA transition and the upstream `.device` safe-area fix.
+- Sprint 1 cards live in Trello "To Do"; ticket text of record in
+  `docs/SPRINT_PLAN.md`.
