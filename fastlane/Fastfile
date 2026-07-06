@@ -5,6 +5,12 @@ default_platform(:ios)
 # SwiftFormat from the invocation dir. Hence the two path sets.
 SWIFTFORMAT_PATHS = "EasySaving EasySavingTests EasySavingUITests EasySavingKit/Sources EasySavingKit/Tests"
 SWIFTLINT_PATHS = "../EasySaving ../EasySavingTests ../EasySavingUITests Sources Tests"
+# Pinned snapshot environment (docs/TESTING.md): device name alone would let
+# fastlane pick the highest runtime available on the machine; the explicit
+# OS keeps CI (which ships several runtimes) on the reference environment.
+DEVICE = "iPhone 17 (26.5)"
+ROOT_PROJECT_SCHEME = "EasySaving"
+ROOT_PROJECT_PATH = "EasySaving.xcodeproj"
 
 platform :ios do
   desc "SwiftFormat (check mode) + SwiftLint (strict). Same command locally and in CI."
@@ -21,21 +27,23 @@ platform :ios do
       sh("swift test --package-path EasySavingKit")
     end
     run_tests(
-      project: "EasySaving.xcodeproj",
-      scheme: "EasySaving",
-      device: "iPhone 17",
-      parallel_testing: false
+      project: ROOT_PROJECT_PATH,
+      scheme: ROOT_PROJECT_SCHEME,
+      device: DEVICE,
+      parallel_testing: false,
+      result_bundle: true
     )
   end
 
-  desc "Snapshot tests only, on the pinned simulator (docs/testing.md)"
+  desc "Snapshot tests only, on the pinned simulator (docs/TESTING.md)"
   lane :snap do
     run_tests(
-      project: "EasySaving.xcodeproj",
-      scheme: "EasySaving",
-      device: "iPhone 17",
+      project: ROOT_PROJECT_PATH,
+      scheme: ROOT_PROJECT_SCHEME,
+      device: DEVICE,
       only_testing: ["EasySavingTests/ContentViewSnapshotTests"],
-      parallel_testing: false
+      parallel_testing: false,
+      result_bundle: true
     )
   end
 end

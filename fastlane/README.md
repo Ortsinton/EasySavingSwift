@@ -37,7 +37,7 @@ Build and run all tests: EasySavingKit via swift test, then the app scheme
 [bundle exec] fastlane ios snap
 ```
 
-Snapshot tests only, on the pinned simulator (docs/testing.md)
+Snapshot tests only, on the pinned simulator (docs/TESTING.md)
 
 ----
 
