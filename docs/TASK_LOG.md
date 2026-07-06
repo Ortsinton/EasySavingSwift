@@ -458,3 +458,157 @@ and `xcodebuild`, which produced the repo's snapshot layout policy.
   the Fastfile (`test` + `snap`) — extract a constant next time the
   file is touched; the `snap` lane `desc` still references the old
   `docs/testing.md` filename (pre-rename) and needs the same touch.
+
+---
+
+## Task 5: GitHub Actions CI pipeline
+
+**Branch/PR:** `0-5-ci-pipeline`, PR #4
+**References:** ADR-009; closes follow-ups from tasks 0-3 (plugin trust,
+SPM cache, README badge, retries decision) and 0-4 (snapshot references
+vs. CI runner, snap-lane placement)
+
+### Summary
+
+Added `.github/workflows/ci.yml`: two jobs (`lint`, then `test` gated by
+`needs: lint`) on a pinned `macos-26` runner with Xcode 26.6 selected via
+`DEVELOPER_DIR`, Ruby pinned by a new `.ruby-version`, SPM caching keyed
+on `Package.resolved`, cancel-in-progress concurrency, and an
+xcresult-bearing artifact uploaded on test failure. Fastlane lanes gained
+`result_bundle: true` and extracted constants (`DEVICE`, scheme, project
+path). README got the CI badge; `lint.sh` / `format.sh` convenience
+scripts landed at the repo root. Both open unknowns from 0-4 resolved
+favorably on the first real run: xcodebuild needed no plugin-validation
+skip flags, and the locally recorded snapshot references passed unchanged
+on the runner. Branch protection and the dummy-PR evidence are completed
+by the PR that lands this entry (see Follow-up).
+
+### Decisions made
+
+- **Runner: `macos-26` (preview) over GA `macos-15`, by pinned-environment
+  necessity.** Verified against the `actions/runner-images` inventory:
+  `macos-15` tops out at Xcode 26.3 / iOS 26.2 runtime; only `macos-26`
+  ships Xcode 26.6 (17F113 — the exact local build) and the iOS 26.5
+  runtime that `docs/TESTING.md` pins. The usual "prefer GA over beta"
+  heuristic loses to the snapshot contract: a reference is only valid
+  under the pinned environment, and CI must reproduce it, not dictate a
+  downgrade. Label is explicit (`macos-26`), never `macos-latest` — a
+  moving pointer is the anti-pin.
+- **Xcode pinned via `DEVELOPER_DIR` env at workflow level** — no
+  third-party setup action for what one environment variable does
+  (same philosophy as ADR-007). Fails loudly if the image ever drops
+  Xcode 26.6.
+- **Triggers: `pull_request` + `push` on `main`.** The push trigger
+  feeds the README badge (default-branch runs) and verifies `main`
+  post-merge (semantic merge conflicts).
+- **Job topology evolved twice during the task, deliberately:**
+  started as a single `lint-build-test` job (motivated by per-job macOS
+  setup cost); split into `lint` and `test` once the repo being public
+  (free minutes) evaporated the cost argument — job granularity is
+  signal granularity in the PR checks tab; then serialized with
+  `needs: lint` (fail-fast: a lint failure skips the expensive test job;
+  accepted cost: green runs pay lint latency before tests start). Jobs
+  are named exactly after the fastlane lanes they run — one job, one
+  lane, same vocabulary locally and in CI.
+- **Cache keys are job-scoped** (`spm-lint-…` / `spm-test-…`): both jobs
+  write different contents into `EasySavingKit/.build`, and Actions
+  cache entries are immutable — a shared key would leave one job forever
+  restoring the other's partial cache. `hashFiles('**/Package.resolved')`
+  covers both lockfiles (the two-lockfile split from task 0-3).
+- **`result_bundle: true` on `test` and `snap` lanes** so the
+  `.xcresult` (which carries snapshot reference/actual/diff attachments)
+  lands in `fastlane/test_output`, which the failure-only artifact step
+  uploads. Without it, scan only emits html/junit reports — useless for
+  diagnosing a pixel divergence on the runner.
+- **`number_of_retries` deliberately rejected** (0-3 follow-up):
+  automatic retries would mask exactly the snapshot nondeterminism the
+  TESTING.md determinism policy exists to surface. Flakiness must stay
+  visible; reconsider only with recurring infrastructure-failure data.
+- **`DEVICE = "iPhone 17 (26.5)"`** — OS pinned explicitly because a bare
+  device name lets fastlane pick the *highest* runtime on the machine
+  (the runner ships 26.2/26.4/26.5). Also closes the 0-4 minor about the
+  repeated device string; `ROOT_PROJECT_SCHEME` / `ROOT_PROJECT_PATH`
+  extracted alongside.
+- **`snap` stays a local-iteration lane; CI runs `test` only.** Resolves
+  the 0-4 open question: the `test` lane runs the whole scheme unfiltered,
+  so the snapshot suite already executes inside it — `snap`'s
+  `only_testing` is a strict subset, and a separate CI job would pay a
+  full runner spin-up to re-run it.
+- **`.ruby-version` (4.0.5) added** — read by `ruby/setup-ruby`
+  (`bundler-cache: true` installs the pinned bundle) and by rbenv/mise
+  locally; closes the recurring system-Ruby-shadowing saga (0-3, 0-4).
+- **Convenience scripts at repo root** (`lint.sh`, `format.sh`),
+  executable, *not* referenced in the Xcode project (precedent: terminal
+  shortcuts stay out of the navigator; config you edit — like `ci.yml` —
+  may be referenced, with no target membership). `lint.sh` mirrors the
+  lint lane verbatim (Fastfile stays canonical; sync noted in the script
+  header). `format.sh` is deliberately lane-less: CI never rewrites code
+  (0-3 decision), so write-mode formatting exists only as an explicit
+  local action.
+- **Branch-protection gotcha recorded:** a required check in *skipped*
+  state counts as passing (GitHub semantics for `needs`/path-filtered
+  jobs). Harmless here — `test` only skips when `lint` is red, which
+  blocks the merge by itself — but "skipped ≠ verified" matters if a
+  required job ever gains an `if:` condition.
+
+### Problems / findings during implementation
+
+- **The SPM plugin write sandbox demands both grants at once** (refines
+  the 0-3 note): `--allow-writing-to-directory .` alone is rejected —
+  the plugin manifest's own declared permission is only satisfied by
+  `--allow-writing-to-package-directory`, while the generic flag covers
+  app-target sources outside the package. Found empirically writing
+  `format.sh`; neither flag alone suffices. Write mode also needs
+  `--cache ignore` (the sandbox blocks `~/Library/Caches/` too).
+- **First-run silence is not a hang.** "Testing started" with no output
+  for ~6–10 min on the runner is the simulator's first boot on a fresh
+  VM plus the serialized (`parallel_testing: false`) suite, dominated by
+  the template UI tests (~87 s locally, 2–3× on the runner). The designed
+  guard for a real hang is `timeout-minutes`, not manual judgment.
+- **Live job logs are admin-gated on the API** (403 without repo-admin
+  token) — mid-run diagnosis happens in the browser; the API serves
+  step-level status/timings unauthenticated on public repos.
+- **Plugin validation under xcodebuild: no issue.** `run_tests` passed
+  with no `-skipPackagePluginValidation` — command plugins not attached
+  to build targets are not fingerprint-validated. The skip flags stay
+  out of the Fastfile (they are a security bypass with no justifying
+  failure).
+
+### Verification
+
+- PR #4 ran the pipeline green **twice** (single-job topology
+  `3aa75ee`, split topology `f7894e8`). Final-topology timings:
+  `lint` 1 m 35 s total (fastlane step 1 m 04 s, uncached);
+  `test` 13 m 49 s total (fastlane step 13 m 14 s: package tests +
+  full app scheme incl. snapshot suite, all uncached).
+- **Snapshots recorded locally passed on the runner unchanged** — the
+  cross-runner determinism promised by the 0-4 layout policy (`.fixed`,
+  no `.device`) now holds across machines, not just runners.
+- Failure-artifact step correctly `skipped` on green runs; cache
+  post-steps saved both job-scoped entries.
+- `lint.sh` verified green (15 files, 0 violations); `format.sh`
+  verified as a no-op on a clean tree (0/11 files, clean `git status`).
+
+### Follow-up generated (not resolved in this task)
+
+- **Branch protection + dummy-PR evidence close with the *next* PR** (the
+  one landing this entry): protection on `main` (require PR, require
+  `lint` and `test` checks, require up-to-date branches) must be
+  configured *before* opening it, so the docs-only PR runs the full
+  pipeline against active protection — that PR is the ticket's evidence.
+  From then on, the job names `lint`/`test` are frozen contracts
+  (renaming one without updating the protection rule blocks all merges).
+- **Template UI tests cost real CI minutes for zero coverage** (~87 s
+  locally, 2–3× on the runner, every PR): replace with the minimal
+  ADR-008 happy-path XCUITest when real UI lands (Sprint 2), or delete
+  earlier if they get in the way.
+- **Cache effectiveness unmeasured:** first runs were all misses by
+  construction (new keys). Check hit-rate and timing delta on the next
+  PR; if `test` doesn't improve, consider whether `EasySavingKit/.build`
+  is the right path set for the xcodebuild-driven job.
+- **Runner image is a preview label:** when `macos-26` goes GA (or the
+  image drops Xcode 26.6), the pin must be revisited together with the
+  snapshot environment — any change re-records the suite deliberately
+  (TESTING.md policy).
+- Minor, resolved in the same PR as this entry: `docs/TESTING.md` now
+  pins Xcode 26.6 (17F113) explicitly instead of "26.x".

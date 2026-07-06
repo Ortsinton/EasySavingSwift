@@ -23,7 +23,7 @@ Record and verify snapshots **only** under this configuration:
 | --- | --- |
 | Simulator device | iPhone 17 (the `device:` in every Fastlane lane) |
 | Simulator OS | iOS 26.5 (build 23F77) |
-| Xcode | 26.x (the version CI pins in task 0-5) |
+| Xcode | 26.6 (17F113) — pinned in CI via `DEVELOPER_DIR` |
 | Appearance | Light, forced per test via `traits:` |
 | Layout | Explicit per test — see layout policy below |
 | View inputs | Fixed literals/fixtures, never live data, dates or locale-dependent values |
