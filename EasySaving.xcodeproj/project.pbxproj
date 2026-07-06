@@ -39,6 +39,8 @@
 		49D20AD02FF803950020CBB6 /* EasySavingTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EasySavingTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		49D20ADA2FF803950020CBB6 /* EasySavingUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EasySavingUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		49D20AF32FF805B10020CBB6 /* CLAUDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CLAUDE.md; sourceTree = "<group>"; };
+		49F426E32FFBBDFD009B7B04 /* ci.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = ci.yml; sourceTree = "<group>"; };
+		49F426E42FFBC11E009B7B04 /* .ruby-version */ = {isa = PBXFileReference; lastKnownFileType = text; path = ".ruby-version"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -107,6 +109,8 @@
 		49D20AB82FF803940020CBB6 = {
 			isa = PBXGroup;
 			children = (
+				49F426E42FFBC11E009B7B04 /* .ruby-version */,
+				49F426E12FFBBDEC009B7B04 /* .github */,
 				494CDD652FFABC06007FF5E6 /* README.md */,
 				494CDD632FFABB3E007FF5E6 /* fastlane */,
 				494CDD602FFA6EFB007FF5E6 /* .swiftformat */,
@@ -131,6 +135,22 @@
 				49D20ADA2FF803950020CBB6 /* EasySavingUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		49F426E12FFBBDEC009B7B04 /* .github */ = {
+			isa = PBXGroup;
+			children = (
+				49F426E22FFBBDF7009B7B04 /* workflows */,
+			);
+			path = .github;
+			sourceTree = "<group>";
+		};
+		49F426E22FFBBDF7009B7B04 /* workflows */ = {
+			isa = PBXGroup;
+			children = (
+				49F426E32FFBBDFD009B7B04 /* ci.yml */,
+			);
+			path = workflows;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

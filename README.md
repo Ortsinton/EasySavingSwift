@@ -1,5 +1,7 @@
 # EasySaving
 
+[![CI](https://github.com/Ortsinton/EasySavingSwift/actions/workflows/ci.yml/badge.svg)](https://github.com/Ortsinton/EasySavingSwift/actions/workflows/ci.yml)
+
 A personal finance (budgeting) iOS app: record expenses and income, browse
 analytics by category and over time, and convert amounts using live exchange
 rates. Built as a portfolio project to demonstrate senior-level native iOS

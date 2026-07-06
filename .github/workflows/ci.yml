@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+
+jobs:
+  ci:
+    name: lint-build-test
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true # installs the Gemfile.lock bundle, cached; reads .ruby-version
+
+      - name: Restore SPM build & plugin binaries
+        uses: actions/cache@v4
+        with:
+          path: EasySavingKit/.build
+          key: spm-xcode26.6-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: spm-xcode26.6-
+
+      - run: bundle exec fastlane lint
+
+      - run: bundle exec fastlane test
+
+      - name: Upload test output on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-output
+          path: fastlane/test_output
