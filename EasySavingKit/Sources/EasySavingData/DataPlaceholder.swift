@@ -11,6 +11,6 @@ public struct DataPlaceholder: Sendable {
     public let text: String
 
     public init() {
-        text = CorePlaceholder().text + " - Data linked"
+        text = "Data linked"
     }
 }

@@ -15,6 +15,12 @@ swift package --package-path EasySavingKit plugin --allow-writing-to-package-dir
   swiftformat --lint --config .swiftformat --cache ignore \
   EasySaving EasySavingTests EasySavingUITests EasySavingKit/Sources EasySavingKit/Tests
 
+# Two SwiftLint passes: production paths against the root config, test paths
+# against the test config (root + test-only relaxations via parent_config).
 swift package --package-path EasySavingKit plugin --allow-writing-to-package-directory \
   swiftlint lint --strict --config ../.swiftlint.yml \
-  ../EasySaving ../EasySavingTests ../EasySavingUITests Sources Tests
+  ../EasySaving Sources
+
+swift package --package-path EasySavingKit plugin --allow-writing-to-package-directory \
+  swiftlint lint --strict --config ../EasySavingKit/Tests/.swiftlint.yml \
+  ../EasySavingTests ../EasySavingUITests Tests

@@ -15,6 +15,13 @@ excluded:
   - .build
   - EasySavingKit/.build
   - fastlane
+  # Test code is linted in a separate pass against EasySavingKit/Tests/.swiftlint.yml
+  # (see the lint lane). Excluded here because the SwiftLint plugin always appends
+  # the package's own paths to the forwarded ones (task 0-3 finding), so the
+  # production pass would otherwise drag the tests in. Both spellings on purpose:
+  # the plugin resolves paths from the package dir, this file lives at repo root.
+  - EasySavingKit/Tests
+  - Tests
 
 disabled_rules:
   - trailing_whitespace  # owned by SwiftFormat
@@ -29,6 +36,10 @@ opt_in_rules:
 line_length:
   warning: 120
   ignores_comments: true
+
+type_name:
+  excluded:
+    - ID # nested typed identifiers (ADR-010); the stdlib's Identifiable consecrates the name
 
 custom_rules:
   core_boundary:
