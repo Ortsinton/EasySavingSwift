@@ -4,7 +4,12 @@ default_platform(:ios)
 # (empirical finding, task 0-3): SwiftLint from the package dir,
 # SwiftFormat from the invocation dir. Hence the two path sets.
 SWIFTFORMAT_PATHS = "EasySaving EasySavingTests EasySavingUITests EasySavingKit/Sources EasySavingKit/Tests"
-SWIFTLINT_PATHS = "../EasySaving ../EasySavingTests ../EasySavingUITests Sources Tests"
+# SwiftLint runs twice: production paths against the root config, test paths
+# against the test config (which inherits the root via parent_config and
+# relaxes test-only rules). Nested-config discovery is disabled by --config,
+# and child_config merges globally — see EasySavingKit/Tests/.swiftlint.yml.
+SWIFTLINT_PROD_PATHS = "../EasySaving Sources"
+SWIFTLINT_TEST_PATHS = "../EasySavingTests ../EasySavingUITests Tests"
 # Pinned snapshot environment (docs/TESTING.md): device name alone would let
 # fastlane pick the highest runtime available on the machine; the explicit
 # OS keeps CI (which ships several runtimes) on the reference environment.
@@ -17,7 +22,8 @@ platform :ios do
   lane :lint do
     Dir.chdir("..") do
       sh("swift package --package-path EasySavingKit plugin --allow-writing-to-package-directory swiftformat --lint --config .swiftformat --cache ignore #{SWIFTFORMAT_PATHS}")
-      sh("swift package --package-path EasySavingKit plugin --allow-writing-to-package-directory swiftlint lint --strict --config ../.swiftlint.yml #{SWIFTLINT_PATHS}")
+      sh("swift package --package-path EasySavingKit plugin --allow-writing-to-package-directory swiftlint lint --strict --config ../.swiftlint.yml #{SWIFTLINT_PROD_PATHS}")
+      sh("swift package --package-path EasySavingKit plugin --allow-writing-to-package-directory swiftlint lint --strict --config ../EasySavingKit/Tests/.swiftlint.yml #{SWIFTLINT_TEST_PATHS}")
     end
   end
 

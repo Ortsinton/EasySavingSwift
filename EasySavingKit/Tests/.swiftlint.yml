@@ -1,0 +1,56 @@
+# SwiftLint configuration for test code (task 1-1).
+#
+# The lint lane runs SwiftLint twice: production paths against the root
+# .swiftlint.yml, test paths against this file. This file is deliberately
+# STANDALONE (no parent_config): every composition mechanism fought back —
+# nested-config discovery is off when --config is passed, child_config
+# merges globally, and parent_config merges `excluded` additively, so the
+# parent's Tests exclusion would empty this very pass (all verified
+# empirically in task 1-1).
+#
+# Kept in sync with the root config BY HAND — if you touch disabled_rules,
+# line_length or opt_in rules there, mirror it here (and vice versa). The
+# boundary custom_rules are not mirrored: their `included` regexes never
+# matched test paths in the first place.
+#
+# Test-only relaxations vs the root config, because parameterized Swift
+# Testing idioms collide with rules designed to protect production API:
+# - large_tuple: argument tables are collections of tuples destructured over
+#   the test function's parameters — 3+ member tuples are the intended idiom.
+# - identifier_name (min_length only): single-letter names like `a`/`b` are
+#   conventional for table columns; other checks (max length, casing) stay.
+# - force_unwrapping: in fixture helpers (`TimeZone(identifier:)!`), nil means
+#   the test infrastructure itself is broken — crashing is the right outcome.
+
+excluded:
+  # Production code is covered by the strict pass; it leaks into this one
+  # because the plugin appends the package paths to every invocation (0-3).
+  # Several spellings on purpose: path resolution differs between the
+  # config-file dir and the plugin's working dir.
+  - .build
+  - ../.build
+  - Sources
+  - ../Sources
+  - EasySavingKit/Sources
+
+disabled_rules: # owned by SwiftFormat, mirrored from the root config
+  - trailing_whitespace
+  - trailing_comma
+  - vertical_whitespace
+  - opening_brace
+  - large_tuple # test-only relaxation
+  - force_unwrapping # test-only relaxation
+
+opt_in_rules:
+  - empty_count
+
+line_length:
+  warning: 120
+  ignores_comments: true
+
+identifier_name:
+  min_length: 1 # test-only relaxation
+
+type_name:
+  excluded:
+    - ID # mirrored from the root config (ADR-010 typed identifiers)
