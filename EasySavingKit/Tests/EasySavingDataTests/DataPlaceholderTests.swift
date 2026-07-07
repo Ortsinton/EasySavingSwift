@@ -10,6 +10,6 @@ import Testing
 
 struct Test {
     @Test func `placeholder exposes text`() {
-        #expect(DataPlaceholder().text == "Core Linked - Data linked")
+        #expect(DataPlaceholder().text == "Data linked")
     }
 }

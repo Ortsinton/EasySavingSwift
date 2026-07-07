@@ -10,7 +10,7 @@ import Foundation
 public struct Category: Sendable, Identifiable, Hashable {
     public struct ID: Sendable, Hashable {
         public let rawValue: UUID
-        
+
         public init(rawValue: UUID = UUID()) {
             self.rawValue = rawValue
         }

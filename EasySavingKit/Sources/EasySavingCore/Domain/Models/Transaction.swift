@@ -10,7 +10,7 @@ import Foundation
 public struct Transaction: Sendable, Identifiable, Hashable {
     public struct ID: Sendable, Hashable {
         public let rawValue: UUID
-        
+
         public init(rawValue: UUID = UUID()) {
             self.rawValue = rawValue
         }
@@ -36,13 +36,14 @@ public struct Transaction: Sendable, Identifiable, Hashable {
                 note: String?,
                 date: Date,
                 createdAt: Date,
-                calendar: Calendar) {
-         self.id = id
-         self.kind = kind
-         self.amount = amount
-         self.categoryID = categoryID
-         self.note = note
-         self.date = calendar.startOfDay(for: date)
-         self.createdAt = createdAt
-     }
+                calendar: Calendar)
+    {
+        self.id = id
+        self.kind = kind
+        self.amount = amount
+        self.categoryID = categoryID
+        self.note = note
+        self.date = calendar.startOfDay(for: date)
+        self.createdAt = createdAt
+    }
 }
