@@ -715,3 +715,144 @@ Deferred items carried into Sprint 1, consolidated from entries 0-2..0-5:
   `macos-26` GA transition and the upstream `.device` safe-area fix.
 - Sprint 1 cards live in Trello "To Do"; ticket text of record in
   `docs/SPRINT_PLAN.md`.
+
+---
+
+## Task 1-1: Domain models — Transaction, Category, Money
+
+**Branch/PR:** `1-1-domain-models`
+**References:** ADR-002, ADR-010; closes the 0-2 follow-up (Core half:
+`CorePlaceholder` deletion)
+
+### Summary
+
+Materialized ADR-010 in `EasySavingCore`: `Money` (Int minor units +
+ISO 4217 code, arithmetic operators with same-currency preconditions),
+`Category` and `Transaction` as public `Sendable` structs with nested
+typed IDs over client-generated UUIDs and relationships by id
+(`Transaction.categoryID`). `Transaction`'s init normalizes the
+day-granular business date through an **injected** `Calendar`
+(`startOfDay`), leaving `createdAt` untouched as a raw instant for stable
+ordering. Parameterized Swift Testing suites cover `Money` arithmetic
+edge cases (including `Int.max`/`Int.min` borders) and date
+normalization, including the Madrid spring-forward DST boundary and the
+23-hour-day proof (82 800 s between consecutive normalized midnights).
+Deleted `CorePlaceholder` + its test + its `ContentView` usage;
+re-recorded the placeholder snapshot. Getting the new test idioms past
+SwiftLint produced a two-pass lint architecture (see Decisions).
+
+### Decisions made
+
+- **Folder precedent (per the emergent-structure policy):**
+  `Sources/EasySavingCore/Domain/Models/`; `Domain/Repositories/` and
+  `Domain/UseCases/` arrive in 1-2, `Presentation/` in Sprint 2. The cut
+  is by conceptual layer, not by feature (ADR-002 proportionality).
+  Test folders mirror the source tree
+  (`Tests/EasySavingCoreTests/Domain/Models/`).
+- **`Decimal` was evaluated and rejected for `Money`** (the ADR-010
+  Int-minor-units rule survives re-examination without its KMP origins):
+  base-10 `Decimal` fixes `Double`'s representation problem but allows
+  fractional cents (invalid states), silently defers rounding decisions,
+  and its `ExpressibleByFloatLiteral` init routes through `Double`
+  (precision trap). Int minor units make invalid states unrepresentable
+  and match fintech convention. `Decimal` remains the right tool *at the
+  edges*: UI parsing/formatting and exchange-rate math (Sprint 4), where
+  conversions go Int → Decimal → explicit rounding → Int.
+- **Mixed-currency arithmetic is a `precondition`, not `throws`:** in a
+  single-currency MVP it is a programmer error (fail fast), not a
+  recoverable condition. Multiplication is money × `Int` scalar only —
+  money × money is dimensionally meaningless (cents²).
+- **Sign lives in `Transaction.Kind`** (`.income`/`.expense`, nested
+  enum); amounts stay positive. Amount validation (> 0) is business
+  logic and lands in `AddTransactionUseCase` (1-2), not in the model.
+- **`note: String?`** — absence of a note is `nil`, not `""`.
+- **ID pattern:** nested `struct ID: Sendable, Hashable` with
+  `rawValue: UUID` and `init(rawValue: UUID = UUID())` (the default *is*
+  the "client-generated" rule). `type_name` lint rule excludes `ID`
+  globally — the stdlib's `Identifiable` consecrates the name.
+- **Package tests import the public surface without `@testable`** —
+  tests act as the first real client of the API (this immediately
+  exposed the internal-memberwise-init gaps). `@testable` requires
+  case-by-case justification.
+- **Expected values in test tables are human-validated literals, never
+  recomputed** with the operation under test (tautology risk); dates are
+  built from literal `DateComponents` through the pinned calendar, never
+  via the API under test.
+- **Test fixtures:** fixed `Calendar` (gregorian, `Europe/Madrid`) as a
+  `static let` — never `Calendar.current`/`Date()` in domain tests
+  (machine-dependent → CI divergence); test-data builder
+  (`makeTransaction`) with static-helper defaults so each test states
+  only what it cares about (static because default arguments cannot
+  touch instance members).
+- **Lint architecture: two SwiftLint passes.** Production paths lint
+  against the root `.swiftlint.yml`; test paths against a **standalone**
+  `EasySavingKit/Tests/.swiftlint.yml` that relaxes exactly three rules
+  whose purpose is protecting production API: `large_tuple` and
+  single-letter `identifier_name` (parameterized-table idioms) and
+  `force_unwrapping` (in fixture helpers, nil means broken test
+  infrastructure — crashing is correct). `line_length` deliberately
+  stays. The config is standalone *by exhaustion*, all verified
+  empirically with a canary file: nested-config discovery is disabled
+  whenever `--config` is passed; `child_config` merges globally (canary
+  in `Sources/` went unflagged); `parent_config` merges `excluded`
+  additively, so inheriting the root would exclude the very tests the
+  pass exists to lint (false green caught by counting linted files, not
+  trusting exit codes). Manual sync with the root config is documented
+  in both files.
+
+### Problems / findings during implementation
+
+- **`Sendable` inference switches off at `public`.** Non-public structs
+  get implicit `Sendable`; the `public` pass silently dropped it from
+  `Category` until reviewed. For public types, sendability is an API
+  contract that must be declared.
+- **The only defects of the task were born in untested code, twice.**
+  `Money.*` was written implementation-first both times and was wrong
+  both times (first `Money × Money` conceptually, then a body that
+  ignored the scalar — Swift emits no unused-parameter warning). Every
+  test-first operator came out correct. The TDD guardrail, demonstrated
+  on home turf.
+- **Deleting `CorePlaceholder` exposed a hidden dependency:**
+  `DataPlaceholder` consumed it to prove the Data → Core arrow (0-2), so
+  the Core-half deletion had to touch one line in `EasySavingData`
+  ahead of 1-3's full cleanup; snapshot re-recorded accordingly.
+- **SwiftLint plugin re-confirmed the 0-3 finding** (package paths are
+  appended to every invocation), which is why both configs need
+  mirror-image `excluded` entries (in several spellings — path
+  resolution differs between config-file dir and the plugin's working
+  dir).
+- **Non-interactive shells need an explicit UTF-8 locale for fastlane:**
+  `xcpretty`/scan crash with `invalid byte sequence in US-ASCII` parsing
+  xcodebuild output otherwise (fastlane's startup warning is the tell).
+  Worth remembering for any future scripted/CI-adjacent invocation:
+  prefix with `LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8`.
+
+### Verification
+
+- `swift test` from the package: 10 tests in 3 suites green
+  (`MoneyTests` 5 parameterized tables, `TransactionTests` 3 contracts,
+  Data placeholder).
+- `./lint.sh`: 0 violations in both passes (production 11 files, tests
+  11 files — `MoneyTests`/`TransactionTests` confirmed present in the
+  test pass after the false-green incident).
+- `bundle exec fastlane test`: green (package + app scheme incl. the
+  re-recorded snapshot), 70 s locally.
+- Boundary intact: no new imports in Core beyond Foundation.
+
+### Follow-up generated (not resolved in this task)
+
+- **1-2:** amount-positivity validation in `AddTransactionUseCase`;
+  repository protocols + use cases get `Domain/Repositories/` and
+  `Domain/UseCases/` per the folder precedent.
+- **1-3:** `DataPlaceholder` + `linkProof` deletion (Data half of the
+  0-2 follow-up), now one line smaller.
+- **Optional, exit tests:** `precondition` violations (mixed-currency
+  arithmetic) are untestable without Swift Testing exit tests
+  (`#expect(processExitsWith:)`); adopt if/when the toolchain makes them
+  cheap on this setup.
+- **Lint config duplication is hand-maintained** (root ↔ test config):
+  revisit if SwiftLint ever ships directory-scoped composition that
+  survives `--config`.
+- `Money` deliberately ships without `Comparable` and without `Int *
+  Money` (commutative overload); add either when a real call site
+  demands it, not before.
