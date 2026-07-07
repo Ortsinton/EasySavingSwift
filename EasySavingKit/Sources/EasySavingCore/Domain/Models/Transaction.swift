@@ -9,7 +9,11 @@ import Foundation
 
 public struct Transaction: Sendable, Identifiable, Hashable {
     public struct ID: Sendable, Hashable {
-        let uuid: UUID
+        public let rawValue: UUID
+        
+        public init(rawValue: UUID = UUID()) {
+            self.rawValue = rawValue
+        }
     }
 
     public enum Kind: Sendable, Hashable {
@@ -18,27 +22,27 @@ public struct Transaction: Sendable, Identifiable, Hashable {
     }
 
     public let id: ID
-    public let type: Kind
+    public let kind: Kind
     public let amount: Money
     public let categoryID: Category.ID
-    public let note: String
+    public let note: String?
     public let date: Date
     public let createdAt: Date
 
-    /* public init(id: TransactionID,
-                 type: TransactionType,
-                 amount: Money,
-                 categoryID: Category.CategoryID,
-                 description: String,
-                 date: Date,
-                 createdAt: Date,
-                 calendar: Calendar) {
+    public init(id: ID,
+                kind: Kind,
+                amount: Money,
+                categoryID: Category.ID,
+                note: String?,
+                date: Date,
+                createdAt: Date,
+                calendar: Calendar) {
          self.id = id
-         self.type = type
+         self.kind = kind
          self.amount = amount
          self.categoryID = categoryID
-         self.description = description
+         self.note = note
          self.date = calendar.startOfDay(for: date)
          self.createdAt = createdAt
-     } */
+     }
 }

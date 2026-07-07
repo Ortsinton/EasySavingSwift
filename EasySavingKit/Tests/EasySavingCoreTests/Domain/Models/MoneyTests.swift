@@ -16,7 +16,6 @@ struct MoneyTests {
         (a: -300, b: -700, sum: -1000), // both negative
         (a: Int.max - 1, b: 1, sum: Int.max), // top border without overflow
     ])
-
     func `addition preserves exact minor units`(a: Int, b: Int, sum: Int) {
         let result = Money(minorUnits: a, currencyCode: "USD") + Money(minorUnits: b, currencyCode: "USD")
         #expect(result == Money(minorUnits: sum, currencyCode: "USD"))
@@ -36,7 +35,6 @@ struct MoneyTests {
         (a: -300, b: -700, sub: 400), // both negative, positive result
         (a: Int.max - 1, b: -1, sub: Int.max), // top border without overflow
     ])
-
     func `subtraction preserves exact minor units`(a: Int, b: Int, sub: Int) {
         let result = Money(minorUnits: a, currencyCode: "USD") - Money(minorUnits: b, currencyCode: "USD")
         #expect(result == Money(minorUnits: sub, currencyCode: "USD"))

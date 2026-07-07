@@ -7,9 +7,13 @@
 
 import Foundation
 
-public struct Category: Identifiable, Hashable {
+public struct Category: Sendable, Identifiable, Hashable {
     public struct ID: Sendable, Hashable {
-        let uuid: UUID
+        public let rawValue: UUID
+        
+        public init(rawValue: UUID = UUID()) {
+            self.rawValue = rawValue
+        }
     }
 
     public let id: ID
