@@ -7,16 +7,16 @@
 
 import Foundation
 
-public struct Transaction : Sendable, Identifiable, Hashable {
+public struct Transaction: Sendable, Identifiable, Hashable {
     public struct ID: Sendable, Hashable {
         let uuid: UUID
     }
-    
+
     public enum Kind: Sendable, Hashable {
         case income
         case expense
     }
-    
+
     public let id: ID
     public let type: Kind
     public let amount: Money
@@ -24,21 +24,21 @@ public struct Transaction : Sendable, Identifiable, Hashable {
     public let note: String
     public let date: Date
     public let createdAt: Date
-    
-    /*public init(id: TransactionID,
-                type: TransactionType,
-                amount: Money,
-                categoryID: Category.CategoryID,
-                description: String,
-                date: Date,
-                createdAt: Date,
-                calendar: Calendar) {
-        self.id = id
-        self.type = type
-        self.amount = amount
-        self.categoryID = categoryID
-        self.description = description
-        self.date = calendar.startOfDay(for: date)
-        self.createdAt = createdAt
-    }*/
+
+    /* public init(id: TransactionID,
+                 type: TransactionType,
+                 amount: Money,
+                 categoryID: Category.CategoryID,
+                 description: String,
+                 date: Date,
+                 createdAt: Date,
+                 calendar: Calendar) {
+         self.id = id
+         self.type = type
+         self.amount = amount
+         self.categoryID = categoryID
+         self.description = description
+         self.date = calendar.startOfDay(for: date)
+         self.createdAt = createdAt
+     } */
 }

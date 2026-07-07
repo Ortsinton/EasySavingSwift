@@ -7,11 +7,11 @@
 
 import Foundation
 
-public struct Category : Identifiable, Hashable {
+public struct Category: Identifiable, Hashable {
     public struct ID: Sendable, Hashable {
         let uuid: UUID
     }
-    
+
     public let id: ID
     public let name: String
     public let iconKey: String
