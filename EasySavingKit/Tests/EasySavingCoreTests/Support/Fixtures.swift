@@ -50,7 +50,8 @@ enum Fixtures {
     static func makeCategory(id: EasySavingCore.Category.ID = Category.ID(),
                              name: String = "Test",
                              iconKey: String = "",
-                             colorKey: String = "") -> EasySavingCore.Category {
+                             colorKey: String = "") -> EasySavingCore.Category
+    {
         Category(id: id, name: name, iconKey: iconKey, colorKey: colorKey)
     }
 }

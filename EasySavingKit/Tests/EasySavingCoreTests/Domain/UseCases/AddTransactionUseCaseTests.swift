@@ -18,7 +18,7 @@ struct AddTransactionUseCaseTests {
         let transaction = Fixtures.makeTransaction(amount: money, categoryID: category.id)
         let sut = AddTransactionUseCase(
             transactionRepository: fakeTransactionRepository,
-            categoryRepository: fakeCategoryRepository
+            categoryRepository: fakeCategoryRepository,
         )
 
         await #expect(throws: AddTransactionError.nonPositiveAmount) {
