@@ -35,7 +35,7 @@ struct AddTransactionUseCaseTests {
         let transaction = Fixtures.makeTransaction(categoryID: categoryID)
         let sut = AddTransactionUseCase(
             transactionRepository: fakeTransactionRepository,
-            categoryRepository: fakeCategoryRepository
+            categoryRepository: fakeCategoryRepository,
         )
 
         await #expect(throws: AddTransactionError.categoryNotFound(categoryID)) {
@@ -51,7 +51,7 @@ struct AddTransactionUseCaseTests {
         let fakeCategoryRepository = FakeCategoryRepository(categories: [Fixtures.makeCategory(id: categoryID)])
         let sut = AddTransactionUseCase(
             transactionRepository: fakeTransactionRepository,
-            categoryRepository: fakeCategoryRepository
+            categoryRepository: fakeCategoryRepository,
         )
 
         let transaction = Fixtures.makeTransaction(categoryID: categoryID)
