@@ -856,3 +856,135 @@ SwiftLint produced a two-pass lint architecture (see Decisions).
 - `Money` deliberately ships without `Comparable` and without `Int *
   Money` (commutative overload); add either when a real call site
   demands it, not before.
+
+---
+
+## Task 1-2: Repository protocols and first use cases
+
+**Branch/PR:** `1-2-repositories-and-use-cases`
+**References:** ADR-002, ADR-007, ADR-008; closes the 1-1 follow-up
+(amount-positivity validation lives in `AddTransactionUseCase`)
+
+### Summary
+
+Added the persistence-agnostic seam promised by ADR-007:
+`TransactionRepository` and `CategoryRepository` protocols in Core
+(async/throws, expressed exclusively in domain types) plus the first three
+use cases — `AddTransactionUseCase` (owning the business validation),
+`GetTransactionsUseCase`, `DeleteTransactionUseCase` — unit-tested against
+hand-written in-memory fakes, zero mocking frameworks. Folder precedents:
+`Domain/Repositories/` and `Domain/UseCases/` in sources; `Fakes/` and
+`Support/` on the test side (suite infrastructure, deliberately no source
+mirror). The Core boundary stays green: Foundation-only imports.
+
+### Decisions made
+
+- **Repository protocol shape:** `public protocol X: Sendable` with
+  everything `async throws`. `Sendable` is part of the contract so types
+  holding a repository can be `Sendable` themselves (the 1-4 `ModelActor`
+  implementations cross isolation boundaries); `async` applies even to
+  reads (adding it later breaks every call site). Reads are named as noun
+  phrases (`transactions()`, not `fetchTransactions()`) per the Swift API
+  Design Guidelines. `save` is documented as upsert — the doc comment is
+  the only spec the 1-4 implementer gets. `delete` takes `Transaction.ID`
+  (relationships-by-id, ADR-010). `category(for:)` returns `Optional`:
+  absence is a query result, not an error.
+- **Use case canonical form (precedent):** `public struct` conforming to
+  `Sendable`, dependencies stored as `any` existentials injected through
+  the initializer, a single `execute()` method. `callAsFunction` rejected
+  (call-site elegance vs. greppability). First argument unlabeled when it
+  is the obvious direct object (`execute(_ transaction:)`). Explicit `any`
+  everywhere, parameters included; existentials over generics at injection
+  seams — a generic parameter would infect ViewModel and composition-root
+  signatures for no measurable win.
+- **Business verbs, not storage verbs:** `AddTransactionUseCase`, not
+  `Save…` — use cases speak the user's language, repositories the
+  store's. `GetTransactionsUseCase` is plural: it returns the list.
+- **Error design:** a companion top-level enum in the use case's own file
+  (`AddTransactionError: Error, Equatable`; the "one type per file" rule
+  admits the contract companion, same as nested `ID`s). `Equatable` is
+  for tests (`#expect(throws:)` compares case + payload);
+  `categoryNotFound(Category.ID)` carries the offending ID. Signature
+  stays untyped `throws`: typed throws would force wrapping repository
+  errors into the enum — deferred until a call site wants exhaustive
+  handling. Boundary recorded: invalid user input (amount ≤ 0) is an
+  expected, recoverable condition → `throws`; `Money`'s mixed-currency
+  `precondition` (1-1) remains programmer error → trap.
+- **Fakes: form follows state.** `FakeTransactionRepository` is an
+  `actor` (mutable `saved` array accessed across tasks);
+  `FakeCategoryRepository` is a plain struct (immutable seeded state —
+  nothing to protect, no serialization to pay for). Fakes implement the
+  *documented* contract (upsert), not just the signature. State-based
+  testing over interaction-based: assert on repository contents, never on
+  call recording — the reason no mocking framework is needed.
+- **Shared fixtures:** `Support/Fixtures.swift`, extracted from
+  `TransactionTests` when the second consumer appeared (rule of two). A
+  caseless enum as namespace — non-instantiable by construction, zero
+  ceremony. Builders gained defaulted parameters so each test states only
+  what it cares about. `@testable` stays banned — which immediately
+  caught a missing `public init` on `Category` (see findings).
+- **Assertion policy (precedent):** assert *content equality*, not counts
+  — validate every test against the "evil implementation" heuristic
+  (would it fail if `delete` removed the wrong row, or `get` returned
+  fabricated data?). Error-path tests also assert no partial writes.
+  `#expect(throws: Never.self)` is reserved for tests whose entire
+  contract is "does not throw" (the delete no-op); happy paths just `try`
+  and assert state.
+
+### Problems / findings during implementation
+
+- **`Category` is ambiguous in the test target — Objective-C's fault.**
+  The ObjectiveC runtime module declares `typealias Category =
+  OpaquePointer` (Obj-C categories) and Foundation re-exports it on
+  Darwin. Inside `EasySavingCore` the local declaration outranks imports;
+  in the test target both candidates are imports, so *type-position*
+  lookup (`categoryID: Category.ID`) ties and errors, while
+  *expression-position* (`Category.ID()`) disambiguates by member lookup
+  (`OpaquePointer` has no `.ID`). Fix: qualify the two type positions in
+  `Fixtures.swift`. Escalation if the clash spreads (it will, in the app
+  target): one local `typealias Category = EasySavingCore.Category` per
+  target — local declarations beat imports.
+- **actor ≠ async, caught live.** A draft made the test suite an `actor`
+  to "gain access" to the fake actor's state. Isolation is per-instance:
+  being an actor grants nothing about *other* actors; the ability to
+  `await` comes from the function being `async`. Suites stay structs with
+  async test functions.
+- **The internal-memberwise-init lesson (0-2) recurred:** constructing
+  `Category` from the test target required adding its explicit
+  `public init`. Same class of finding, third occurrence: `public` on the
+  type is a decision the members must accompany.
+- **Weak assertions were the review churn of the task:** count-based
+  checks and tests that passed against empty/evil implementations
+  (delete-without-selectivity, get-without-content). The assertion policy
+  above is the distilled takeaway.
+- **The relaxed test lint config earned its keep:** `line_length` (kept
+  deliberately in 1-1) and `empty_count` flagged five real cleanups in
+  the new tests; each violation reported twice (the 0-3 double-linting
+  cosmetic, still accepted).
+
+### Verification
+
+- `swift test` from the package: 17 tests in 6 suites, green. Suites run
+  in parallel by default; safe because every test builds its own fakes —
+  zero shared state.
+- `./lint.sh`: 0 violations in both passes; boundary rules
+  (`core_boundary`) green — no new imports in Core beyond Foundation
+  (verified also by grep).
+- `bundle exec fastlane test`: green (package + app scheme incl.
+  snapshot suite).
+
+### Follow-up generated (not resolved in this task)
+
+- **1-3:** SwiftData `@Model` classes + mappers; delete `DataPlaceholder`
+  and the `linkProof` wiring (Data half of the 0-2 cleanup).
+- **1-4:** implement both protocols as `ModelActor` repositories against
+  an in-memory `ModelContainer`. The upsert doc comment on `save` is the
+  contract to honor; the fakes' behavior is the executable spec to match.
+- Typed throws on `execute` — revisit only when a call site needs
+  exhaustive error handling.
+- Per-target `typealias Category = EasySavingCore.Category` if the
+  ObjectiveC clash spreads beyond the two qualified sites in
+  `Fixtures.swift`.
+- Template file headers went stale twice during renames this task;
+  dropping them entirely was floated and deferred — decide next time one
+  lies.
