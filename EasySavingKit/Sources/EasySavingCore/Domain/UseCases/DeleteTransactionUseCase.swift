@@ -8,7 +8,7 @@
 public struct DeleteTransactionUseCase: Sendable {
     private let repository: any TransactionRepository
 
-    public init(repository: TransactionRepository) {
+    public init(repository: any TransactionRepository) {
         self.repository = repository
     }
 

@@ -14,7 +14,7 @@ public struct AddTransactionUseCase: Sendable {
     private let transactionRepository: any TransactionRepository
     private let categoryRepository: any CategoryRepository
 
-    public init(transactionRepository: TransactionRepository, categoryRepository: CategoryRepository) {
+    public init(transactionRepository: any TransactionRepository, categoryRepository: any CategoryRepository) {
         self.transactionRepository = transactionRepository
         self.categoryRepository = categoryRepository
     }
