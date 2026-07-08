@@ -1,5 +1,5 @@
 //
-//  GetTransactionUseCase.swift
+//  GetTransactionsUseCase.swift
 //  EasySavingKit
 //
 //  Created by Jorge Sirvent on 8/7/26.

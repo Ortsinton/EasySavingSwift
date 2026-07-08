@@ -21,14 +21,6 @@ public struct Transaction: Sendable, Identifiable, Hashable {
         case expense
     }
 
-    public let id: ID
-    public let kind: Kind
-    public let amount: Money
-    public let categoryID: Category.ID
-    public let note: String?
-    public let date: Date
-    public let createdAt: Date
-
     public init(id: ID,
                 kind: Kind,
                 amount: Money,
@@ -46,4 +38,12 @@ public struct Transaction: Sendable, Identifiable, Hashable {
         self.date = calendar.startOfDay(for: date)
         self.createdAt = createdAt
     }
+
+    public let id: ID
+    public let kind: Kind
+    public let amount: Money
+    public let categoryID: Category.ID
+    public let note: String?
+    public let date: Date
+    public let createdAt: Date
 }

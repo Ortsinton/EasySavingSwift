@@ -9,16 +9,16 @@ import EasySavingCore
 
 struct FakeCategoryRepository: CategoryRepository {
     private let savedCategories: [Category]
-    
+
     init(categories: [Category] = []) {
-        self.savedCategories = categories
+        savedCategories = categories
     }
-    
+
     func categories() async throws -> [Category] {
-        return savedCategories
+        savedCategories
     }
-    
+
     func category(for id: Category.ID) async throws -> Category? {
-        return savedCategories.first(where: { $0.id == id })
+        savedCategories.first(where: { $0.id == id })
     }
 }
