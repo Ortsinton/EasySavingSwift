@@ -5,16 +5,14 @@
 //  Created by Jorge Sirvent on 10/7/26.
 //
 
-import Testing
-@testable import EasySavingData
 import EasySavingCore
+@testable import EasySavingData
 import Foundation
+import Testing
 
-@Suite
 struct CategoryModelMappingTests {
-    
     @Test
-    func `category round trip provides the exact same fields`() async throws {
+    func `category round trip provides the exact same fields`() {
         let expectedID = UUID()
         let expectedName = "Test Category"
         let expectedIconKey = "test-icon"
@@ -23,17 +21,17 @@ struct CategoryModelMappingTests {
             id: Category.ID(rawValue: expectedID),
             name: expectedName,
             iconKey: expectedIconKey,
-            colorKey: expecteColorKey
+            colorKey: expecteColorKey,
         )
-        
+
         let model = CategoryModel(from: category)
-        expectProperties(of:category, match: model)
-        
+        expectProperties(of: category, match: model)
+
         let actualCategory = model.toDomain()
-        
+
         #expect(actualCategory == category)
     }
-    
+
     private func expectProperties(of category: EasySavingCore.Category, match categoryModel: CategoryModel) {
         #expect(category.id.rawValue == categoryModel.id)
         #expect(category.name == categoryModel.name)
