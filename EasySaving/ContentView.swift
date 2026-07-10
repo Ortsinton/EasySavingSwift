@@ -8,14 +8,13 @@
 import SwiftUI
 
 struct ContentView: View {
-    let linkProof: String
     var body: some View {
         VStack {
-            Text(linkProof)
+            Text("PlaceholderText")
         }
     }
 }
 
 #Preview {
-    ContentView(linkProof: "PlaceholderText")
+    ContentView()
 }

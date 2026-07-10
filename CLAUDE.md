@@ -118,8 +118,10 @@ decides what that means (push, sheet, nothing). See ADR-003/ADR-004.
    Sprint-first numbering keeps branches sorted chronologically.
 3. When done, verify: `Fastlane` test lane green (build + SwiftLint +
    SwiftFormat + unit/snapshot tests) before considering the task finished
-4. Descriptive commit referencing the task, e.g.:
-   `feat: define domain models (Transaction, Category, Money)`
+4. Descriptive commit messages prefixed with the task id (`S-N`), e.g.:
+   `1-3 Added SwiftData models and mappers`. No Conventional Commits
+   prefixes (`feat:`, `fix:`, …) — decision recorded in the 1-3 TASK_LOG
+   entry, superseding the 0-1 decision.
 5. Progress between sessions is inferred from the code and git history,
    not from previous conversations — every Claude Code session starts
    with no memory of previous sessions, which is why this file, the code
