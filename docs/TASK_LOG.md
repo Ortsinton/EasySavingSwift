@@ -988,3 +988,156 @@ mirror). The Core boundary stays green: Foundation-only imports.
 - Template file headers went stale twice during renames this task;
   dropping them entirely was floated and deferred — decide next time one
   lies.
+
+---
+
+## Task 1-3: SwiftData @Model classes and mappers
+
+**Branch/PR:** `1-3-SwiftData-models`
+**References:** ADR-005, ADR-010; closes the 0-2 follow-up (Data half:
+`DataPlaceholder` + `linkProof` wiring deleted); supersedes the 0-1
+commit-message decision (see Decisions)
+
+### Summary
+
+Added the persistence representation in `EasySavingData`:
+`TransactionModel` and `CategoryModel` as internal `final` `@Model`
+classes under `Persistence/Models/`, with bidirectional mappers as
+extensions under `Persistence/Mappers/` (`Type+Mapping.swift` files) and
+a `MappingError` enum for the fallible direction. The central design
+outcome: **mapping is not ingestion** — mappers restore persisted state
+verbatim and never re-run domain policy, which forced a second, explicit
+rehydration path into `Transaction` (Core). Round-trip unit tests cover
+id/date/money/note fidelity plus the unknown-kind error path. The app
+target no longer imports `EasySavingData` at all; `ContentView` is back
+to a plain placeholder and its snapshot was re-recorded. `swift build`
+for the host Mac surfaced a missing macOS platform declaration in
+`Package.swift` (see Problems).
+
+### Decisions made
+
+- **Folder precedents:** `Sources/EasySavingData/Persistence/Models/`
+  and `Persistence/Mappers/` — `Persistence/` as a sibling of the future
+  `Networking/` (ADR-006) so the target's layout narrates its
+  architecture. Test tree mirrors it
+  (`Tests/EasySavingDataTests/Persistence/Mappers/`). Mapper files are
+  extensions named `Type+Topic.swift` (the Swift convention; one-type-
+  per-file is not violated — no new type lives there).
+- **`@Model` classes are `internal final`, no explicit `PersistentModel`
+  conformance** — the macro adds it; writing it by hand is redundant.
+  `internal` is the ADR-005 boundary made real: persistence types never
+  become package API.
+- **The schema stays primitive.** Typed IDs flatten to `UUID` columns
+  (never `String` — no parse-failure path on read); `Money` flattens to
+  `amountMinorUnits: Int` + `currencyCode: String` (a value object
+  becomes columns; the mapper recomposes it); `Transaction.Kind`
+  persists as a `String` (`"income"`/`"expense"`).
+- **Kind as String, and why not the alternatives:** an `Int` raw value
+  is positional — reordering/inserting enum cases silently changes the
+  meaning of stored rows; a `Codable` domain enum stored directly makes
+  the on-disk format an opaque encoding coupled to domain case names
+  (renaming a case in Core would corrupt existing stores). The disk
+  strings live as private constants (`KindValue`) in the mapper file —
+  the single source of truth both switch directions share. An explicit
+  switch was preferred over a raw-value enum precisely to keep domain
+  names and disk format independently renameable.
+- **Mapping is not ingestion (the Calendar trap).** `Transaction`'s
+  canonical init normalizes the business date via injected `Calendar` —
+  that is *ingest-time* policy. Re-running it on read would let a device
+  timezone change silently mutate persisted business dates (startOfDay
+  over an already-normalized date is only idempotent under the same
+  calendar). Resolution: a second public init in Core
+  (`normalizedDate:`) that applies no normalization, documented as
+  rehydration-only. The contract is documentary — `Date` cannot express
+  "already normalized"; a compile-time `DayDate` type is recorded as
+  deliberate debt, not adopted.
+- **Model→domain is the partial direction and throws.** Unknown `kind`
+  on disk is external input (a future app version, a migration bug),
+  not an in-process programmer error — so `MappingError` (top-level
+  enum, `Equatable`, own file) rather than a precondition; the 1-2
+  error boundary reaffirmed. Domain→model is total and cannot fail.
+- **`@testable import EasySavingData` — the first justified use.** The
+  1-1 rule ("tests exercise public API, no `@testable`") assumes the
+  tested surface *should* be public. Persistence types are internal by
+  architectural decision; making them public to test them would destroy
+  the boundary being tested. Case-by-case justification recorded as
+  precedent. Data tests grew their own minimal `Fixtures` (test targets
+  cannot import each other; rule of two not met across targets).
+- **Round-trip test policy:** one `Equatable` identity assert
+  (domain → model → domain == original) is the future-proof verdict —
+  field-by-field domain asserts go stale when fields are added. Its
+  blind spot: two *symmetric* mapper bugs cancel out — so the
+  domain→model direction asserts columns directly against hand-written
+  literals (`"income"`, never the `KindValue` constants — the test pins
+  the disk format; referencing the constants would be tautological).
+  Fixture dates are literal Madrid-midnight values, which makes the
+  identity assert double as the regression test for the Calendar trap
+  (a re-normalizing mapper fails on any non-Madrid machine, CI
+  included).
+- **`platforms` gained `.macOS(.v14)`** in `Package.swift`: the list is
+  *per-platform minimums when built for that platform*, not "supported
+  platforms". `swift build`/`swift test` compile for the host Mac, and
+  SwiftData requires macOS 14 — without the entry, SPM assumes the
+  toolchain's historic minimum and availability checking fails. Keeps
+  the no-Xcode package workflow alive (a 1-4 acceptance criterion).
+- **Commit-message convention changed (supersedes 0-1):** descriptive
+  messages prefixed with the task id (`1-3 Added models and mappers`),
+  no Conventional Commits prefixes. CLAUDE.md updated; the 0-1 entry
+  stays as written (historical record, per the 0-2 precedent).
+- **Template file headers survive another sprint:** one lied again
+  (`Napping.swift` after a rename); dropping them was re-floated and
+  remains deferred.
+
+### Problems / findings during implementation
+
+- **`swift build` broke the moment `@Model` landed:**
+  `'_PersistedProperty()' is only available in macOS 14 or newer`. First
+  real proof that the CLI builds the package for the host platform, and
+  that `platforms:` had only ever declared the iOS floor. Fixed as per
+  Decisions.
+- **The Obj-C `Category` clash spread to `EasySavingDataTests`,** as
+  1-2 predicted: `Fixtures.swift` needed `EasySavingCore.Category`
+  qualifications in type positions. Escalation path (per-target
+  `typealias`) still on the shelf.
+- **The unused-import lesson (0-1) recurred in the app target:**
+  deleting `DataPlaceholder` usage left `import EasySavingData` behind,
+  compiling silently. Caught by grep in review — Swift still emits no
+  diagnostic for unused imports.
+- **Review churn worth remembering:** `MappingError` was first written
+  as a class imitating enum cases (losing `Equatable` payload
+  comparison); a `do { } catch { throw error }` no-op wrapped
+  `toDomain()`; the round-trip test initially asserted field-by-field
+  instead of by identity, reimplemented the kind mapping inside
+  `Fixtures` (a tautology one step removed), and used `Date()` despite
+  the 1-1 machine-independence precedent. Each is the negative print of
+  a Decision above.
+
+### Verification
+
+- `swift test` from the package: 20 tests in 7 suites, green (round-trip
+  parameterized over kind × note-nil, column pinning, unknown-kind error
+  case, date-preservation regression).
+- `./lint.sh`: 0 violations in 27 files; `data_boundary` green
+  (acceptance criterion).
+- `bundle exec fastlane test`: green — package + app scheme including
+  the re-recorded placeholder snapshot.
+- No `import EasySavingData` anywhere in the app target (grep).
+
+### Follow-up generated (not resolved in this task)
+
+- **1-4:** implement the `ModelActor` repositories over these models.
+  Upsert (`save`'s documented contract) must match on the *business*
+  `id` column, not `persistentModelID` — and will want a uniqueness
+  guarantee on `id` (`#Unique`/`@Attribute(.unique)`), deliberately not
+  added here where no fetch path exists yet to exercise it.
+- `DayDate` (compile-time "day-normalized" guarantee) recorded as
+  conscious debt; revisit if the documentary contract on
+  `init(normalizedDate:)` ever gets misused.
+- `Transaction`'s two inits duplicate their assignment bodies; the
+  canonical one could delegate to the rehydration one
+  (single assignment path) — suggested in review, not adopted, harmless.
+- Per-target `typealias Category = EasySavingCore.Category` if the
+  Obj-C clash reaches a third site (now at two: Core tests fixtures,
+  Data tests fixtures).
+- File headers: still kept, still occasionally lying — the standing
+  offer to strip them (SwiftFormat `--header strip`) remains open.
