@@ -21,6 +21,14 @@ public struct Transaction: Sendable, Identifiable, Hashable {
         case expense
     }
 
+    public let id: ID
+    public let kind: Kind
+    public let amount: Money
+    public let categoryID: Category.ID
+    public let note: String?
+    public let date: Date
+    public let createdAt: Date
+
     public init(id: ID,
                 kind: Kind,
                 amount: Money,
@@ -39,11 +47,22 @@ public struct Transaction: Sendable, Identifiable, Hashable {
         self.createdAt = createdAt
     }
 
-    public let id: ID
-    public let kind: Kind
-    public let amount: Money
-    public let categoryID: Category.ID
-    public let note: String?
-    public let date: Date
-    public let createdAt: Date
+    /// For rehydration from persistence. `normalizedDate` must already be
+    /// day-normalized; this initializer applies no normalization.
+    public init(id: ID,
+                kind: Kind,
+                amount: Money,
+                categoryID: Category.ID,
+                note: String?,
+                normalizedDate: Date,
+                createdAt: Date)
+    {
+        self.id = id
+        self.kind = kind
+        self.amount = amount
+        self.categoryID = categoryID
+        self.note = note
+        date = normalizedDate
+        self.createdAt = createdAt
+    }
 }

@@ -4,7 +4,8 @@ import PackageDescription
 
 let package = Package(
     name: "EasySavingKit",
-    platforms: [.iOS(.v17)],
+    // iOS 17 for mobile devices, macOS 14 for CLI
+    platforms: [.iOS(.v17), .macOS(.v14)],
     products: [
         .library(name: "EasySavingCore", targets: ["EasySavingCore"]),
         .library(name: "EasySavingData", targets: ["EasySavingData"]),
