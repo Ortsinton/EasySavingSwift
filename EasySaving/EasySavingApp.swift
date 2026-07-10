@@ -12,7 +12,7 @@ import SwiftUI
 struct EasySavingApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView(linkProof: DataPlaceholder().text)
+            ContentView(linkProof: "DataPlaceholder linked")
         }
     }
 }
