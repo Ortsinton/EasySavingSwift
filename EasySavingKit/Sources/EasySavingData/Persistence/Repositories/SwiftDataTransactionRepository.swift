@@ -23,7 +23,7 @@ actor SwiftDataTransactionRepository: TransactionRepository {
     }
 
     func save(_ transaction: Transaction) async throws {
-        if let existing = try existingTransaction(with: transaction.id) {
+        if let existing = try existingTransactionModel(with: transaction.id) {
             existing.update(from: transaction)
         } else {
             modelContext.insert(TransactionModel(from: transaction))
@@ -32,13 +32,13 @@ actor SwiftDataTransactionRepository: TransactionRepository {
     }
 
     func delete(_ id: Transaction.ID) async throws {
-        if let existing = try existingTransaction(with: id) {
+        if let existing = try existingTransactionModel(with: id) {
             modelContext.delete(existing)
         }
         try modelContext.save()
     }
 
-    private func existingTransaction(with id: Transaction.ID) throws -> TransactionModel? {
+    private func existingTransactionModel(with id: Transaction.ID) throws -> TransactionModel? {
         let rawID = id.rawValue
         var descriptor = FetchDescriptor<TransactionModel>(
             predicate: #Predicate { $0.id == rawID },
