@@ -1141,3 +1141,184 @@ for the host Mac surfaced a missing macOS platform declaration in
   Data tests fixtures).
 - File headers: still kept, still occasionally lying — the standing
   offer to strip them (SwiftFormat `--header strip`) remains open.
+
+---
+
+## Task 1-4: SwiftData repositories over ModelActor
+
+**Branch/PR:** `1-4-repositories`
+**References:** ADR-005, ADR-007, ADR-008; closes the 1-3 follow-up
+(upsert on the business `id` + uniqueness guarantee); executes the
+typealias escalation the 1-3 entry left armed
+
+### Summary
+
+Implemented the persistence half of ADR-005's seam:
+`SwiftDataTransactionRepository` and `SwiftDataCategoryRepository` as
+internal `@ModelActor` actors under `Persistence/Repositories/`,
+conforming to the Core protocols. The repository contracts stopped being
+implicit: deterministic ordering, upsert semantics, idempotent delete
+and nil-on-miss are now documented on the protocols and each one is
+pinned by an integration test against an in-memory `ModelContainer`.
+Business `id` columns gained `@Attribute(.unique)` as a schema-level
+safety net. The Obj-C `Category` clash reached its third site (first in
+sources) and was resolved with the per-target typealias. One
+environment finding: fastlane needs an explicit UTF-8 locale in
+non-interactive shells.
+
+### Decisions made
+
+- **Folder precedents:** `Persistence/Repositories/` as a sibling of
+  `Models/` and `Mappers/`; test tree mirrors it
+  (`Tests/EasySavingDataTests/Persistence/Repositories/`).
+- **`@ModelActor` as the concurrency answer.** `ModelContext` is not
+  `Sendable`; the container is. The macro gives the actor a private
+  context bound to its serial executor plus the generated
+  `init(modelContainer:)`. Key consequence: the actor's context has
+  **no autosave** (only `mainContext` does), so every write method ends
+  in an explicit `modelContext.save()` — each repository method is a
+  transaction with a visible boundary, uniform across methods (`save()`
+  sits outside the `if` in `delete` on purpose: harmless when nothing
+  changed, no special-cased branches).
+- **Ordering is part of the repository contract, documented on the
+  protocols.** Without `sortBy` there is no `ORDER BY` and the order is
+  whatever the query plan likes — an intermittent bug waiting for UI
+  and tests. `transactions()`: business date descending with
+  `createdAt` tie-break — the tie-break is not optional, because 1-3
+  normalizes business dates to `startOfDay`, so same-day ties are the
+  norm, not the edge. `categories()`: name ascending with
+  `.localizedStandard`. Boundary check: aggregations stay in use cases
+  (ADR-005), but "return it sorted" is data-access contract, not
+  business logic — pushing sort into SQLite is what the store is for.
+- **Upsert matches on the business `id`** via fetch-then-update
+  (`#Predicate` + `fetchLimit 1`, shared private helper). The
+  alternative — relying on `@Attribute(.unique)`'s implicit
+  collision-upsert on insert — was rejected as opaque magic with
+  version-dependent semantics; the constraint stays as the **schema
+  safety net**, not the mechanism. `#Unique` itself was rejected:
+  iOS 18/macOS 15 only, our floors are 17/14. Pre-release, so the
+  schema change costs nothing; after release it would have been a
+  migration.
+- **`update(from: Transaction)` lives in the mapper file.** Writing the
+  column assignments in the repository would duplicate the
+  domain→disk knowledge (init + update = two owners, silent bugs when a
+  field is added and only one list learns about it). Two adjacent
+  assignment lists in the one mapper file is the accepted compromise. A
+  first draft took a `TransactionModel` parameter — which forced the
+  caller to allocate a throwaway managed object just to copy columns —
+  and was reshaped to take the domain struct.
+- **`precondition`, not `throw`, for the update id-mismatch guard** —
+  the 1-3 error doctrine applied in the opposite direction. Unknown
+  kind on disk was external input (throw); an id mismatch here is only
+  reachable through an in-process programmer error (the repo just
+  fetched the model by that id), and no caller has a legitimate
+  `catch` for it. A first-draft `MappingError.noMatchingIDsWhenUpdating`
+  case (String-message payload — errors carry data, not prose) was
+  deleted as a dead contract. Rule of thumb recorded: *thrown error =
+  "this can happen to you in production, decide"; precondition = "this
+  cannot happen; if it does the program is broken".*
+- **Error policy: propagate untranslated; swallowing vetoed twice.**
+  `catch → return []` and `try?` both convert "I could not read the
+  store" into "there is no data" — merging the failure channel into a
+  success value (empty-state UI over a corrupt store with years of
+  data). Swift's `throws` is untyped, so propagation leaks no Data
+  types into Core: `MappingError` is `internal`, Core cannot even name
+  it in a `catch`. A domain error taxonomy (à la ADR-006's
+  `NetworkError`) is deferred until some UI actually needs to
+  distinguish failure cases.
+- **`delete` is an idempotent no-op on missing ids.** The contract is a
+  post-state ("this id is absent"), not an action log; double
+  swipe-to-delete and retries are legitimate races, and every caller's
+  `catch` would end in "ignore". Contrast recorded: `category(for:)`
+  returns `nil` on miss because there absence *is* the information the
+  caller asked for — same test ("what would the caller do?"), opposite
+  conclusion. Implementation is fetch-then-delete;
+  `delete(model:where:)` was skipped (iOS 17 bugs, less inspectable
+  semantics).
+- **`#Predicate` hygiene: only model columns and plain local values
+  inside the closure.** `$0.id == id.rawValue` with a domain typed ID
+  captured does not compile — the macro expands the member access to a
+  `KeyPath` over `Value<Transaction.ID>`, which is not a
+  `StandardPredicateExpression` and cannot be translated to SQL. Hoist
+  `rawValue` into a local `let` first.
+- **The typealias escalation fired: `Category+Alias.swift` at the
+  target root.** Third clash site, first outside tests. The intruder
+  was identified empirically with scratch probes: `ObjectiveC.Category`
+  (an `OpaquePointer` for Obj-C runtime categories), re-exported by
+  Foundation. The mappers had dodged it by importing only
+  `EasySavingCore`; the repositories cannot — `SortDescriptor` and
+  `#Predicate` are Foundation types SwiftData does not re-export.
+  Resolution: `typealias Category = EasySavingCore.Category`,
+  `internal`, at `Sources/EasySavingData/` root (a target-wide concern,
+  not a `Persistence/` one). Mechanism: own-module declarations win
+  name lookup over imported ones — which is also why the alias **must
+  be named `Category`**; a first attempt named `CategoryAlias` shadowed
+  nothing (a new name disputes no tie). The RHS is module-qualified, so
+  the same-name alias is neither recursive nor self-clashing.
+- **Test architecture.** In-memory container
+  (`ModelConfiguration(isStoredInMemoryOnly: true)`): same SQLite
+  engine, predicates and constraints, integration fidelity at unit
+  speed. One container per test via the suite's `init() throws` —
+  Swift Testing instantiates the suite per test and runs in parallel by
+  default, so a shared container is a data race; the throwing init also
+  dissolved a `try!`/`lazy var`/`mutating` triangle from the first
+  draft (setup failure is now a failed test, not a process crash).
+  Seeding for the read-only category repository is **Back Door
+  Manipulation** (Meszaros): the test owns the container, so it inserts
+  `CategoryModel` rows through a throwaway `ModelContext(container)`
+  (never `mainContext` — MainActor-bound, would contaminate the suite)
+  and asserts through the repository API. Adding a test-only `save` to
+  `CategoryRepository` was rejected: read-only is a domain decision,
+  and API grown for tests is test-induced design damage.
+- **Test data must discriminate the correct criterion from the wrong
+  ones** (the 1-3 column-pinning lesson generalized). The alphabetical
+  test mixes cases so a non-localized ASCII sort fails it ("Category 3"
+  would beat "better category"); the ordering test uses three
+  transactions so each `SortDescriptor` is pinned independently; the
+  delete test deletes twice so the no-op is exercised, not assumed.
+
+### Problems / findings during implementation
+
+- `delete`'s first draft put `.rawValue` inside the `#Predicate` and
+  did not compile (see Decisions); `save` had the hoisting, `delete`
+  didn't — caught by building during review.
+- The `Category` ambiguity initially looked inconsistent (mapper fine,
+  repository broken) until the import sets were compared; scratch-file
+  probes pinned the intruder to `ObjectiveC` via Foundation's
+  re-export.
+- `fastlane test` crashed with `invalid byte sequence in US-ASCII`
+  inside xcpretty when run from a locale-less non-interactive shell
+  (Swift Testing's `✔` glyphs in the xcodebuild output). Fix:
+  `LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8`. Interactive terminals with a
+  configured locale never see this.
+- SwiftLint caught `empty_count` (×2) and a 131-character line — Swift
+  Testing display names count as code lines for `line_length`.
+- Review churn worth remembering: a `try?` in `category(for:)`
+  silently swallowing store errors (the "return `[]`" anti-pattern one
+  step removed — and the compiler is satisfied, only review catches
+  it); `order: .reverse` copy-pasted onto the name sort (Z→A);
+  qualified `EasySavingCore.Category` where no clash existed;
+  a `get`-prefixed helper whose name said domain (`Transaction`) while
+  returning persistence (`TransactionModel`).
+
+### Verification
+
+- `swift test`: 29 tests in 9 suites, green (upsert by count + identity,
+  both sort descriptors pinned, double-delete no-op, case-mixed
+  alphabetical order, hit/miss on `category(for:)`).
+- `./format.sh`: no rewrites; `./lint.sh`: 0 violations in 31 files.
+- `bundle exec fastlane lint` and `bundle exec fastlane test`: green
+  (package + app scheme), with the UTF-8 locale prefix.
+
+### Follow-up generated (not resolved in this task)
+
+- Repositories exist but nothing instantiates them yet: the composition
+  root (`AppDependencies`, ADR-007) arrives with the first
+  ViewModel/DI ticket, which will pass the shared `ModelContainer` in.
+- Category write path deliberately absent: `CategoryRepository` stays
+  read-only until an MVP ticket needs category creation/seeding — the
+  test suites seed through the back door on purpose.
+- Optional cleanup: the same `Category` typealias trick in the two test
+  targets would remove the qualified fixtures from 1-3.
+- `DayDate` compile-time debt: unchanged from 1-3.
+- File headers: still kept, the standing strip offer remains open.
