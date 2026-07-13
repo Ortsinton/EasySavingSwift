@@ -38,6 +38,18 @@ extension TransactionModel {
         )
     }
 
+    func update(from transaction: Transaction) {
+        precondition(id == transaction.id.rawValue,
+                     "update(from:) called with mismatched id: expected model \(id), got transaction \(transaction.id)")
+        kind = Self.kindStringValue(from: transaction.kind)
+        amountMinorUnits = transaction.amount.minorUnits
+        currencyCode = transaction.amount.currencyCode
+        note = transaction.note
+        categoryID = transaction.categoryID.rawValue
+        date = transaction.date
+        createdAt = transaction.createdAt
+    }
+
     private static func kindStringValue(from kind: Transaction.Kind) -> String {
         switch kind {
         case .income: KindValue.income
