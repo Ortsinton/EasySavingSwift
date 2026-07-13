@@ -116,8 +116,11 @@ decides what that means (push, sheet, nothing). See ADR-003/ADR-004.
 2. Create a new branch per task: `S-N-short-name`, where `S` is the
    sprint number and `N` the task number (e.g. `0-2-EasySavingKit`).
    Sprint-first numbering keeps branches sorted chronologically.
-3. When done, verify: `Fastlane` test lane green (build + SwiftLint +
-   SwiftFormat + unit/snapshot tests) before considering the task finished
+3. When done, run the `/pr-check` skill (`.claude/commands/pr-check.md`):
+   `./format.sh` → `./lint.sh` → `bundle exec fastlane lint` →
+   `bundle exec fastlane test`. Claude runs it unprompted when it
+   considers the ticket ready, reports the results, and only then gives
+   green light for the user to create the PR manually.
 4. Descriptive commit messages prefixed with the task id (`S-N`), e.g.:
    `1-3 Added SwiftData models and mappers`. No Conventional Commits
    prefixes (`feat:`, `fix:`, …) — decision recorded in the 1-3 TASK_LOG
