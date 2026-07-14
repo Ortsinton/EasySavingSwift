@@ -49,21 +49,6 @@
 			path = fastlane;
 			sourceTree = "<group>";
 		};
-		49B0CC9A30064C4F00D5EAC4 /* App */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = App;
-			sourceTree = "<group>";
-		};
-		49B0CC9B30064C5600D5EAC4 /* Navigation */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Navigation;
-			sourceTree = "<group>";
-		};
-		49B0CC9D30064C6600D5EAC4 /* Features */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Features;
-			sourceTree = "<group>";
-		};
 		49D20AC32FF803940020CBB6 /* EasySaving */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = EasySaving;
@@ -124,9 +109,6 @@
 		49D20AB82FF803940020CBB6 = {
 			isa = PBXGroup;
 			children = (
-				49B0CC9A30064C4F00D5EAC4 /* App */,
-				49B0CC9D30064C6600D5EAC4 /* Features */,
-				49B0CC9B30064C5600D5EAC4 /* Navigation */,
 				49F426E42FFBC11E009B7B04 /* .ruby-version */,
 				49F426E12FFBBDEC009B7B04 /* .github */,
 				494CDD652FFABC06007FF5E6 /* README.md */,
@@ -187,9 +169,6 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				49B0CC9A30064C4F00D5EAC4 /* App */,
-				49B0CC9B30064C5600D5EAC4 /* Navigation */,
-				49B0CC9D30064C6600D5EAC4 /* Features */,
 				49D20AC32FF803940020CBB6 /* EasySaving */,
 			);
 			name = EasySaving;
