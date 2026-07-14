@@ -276,3 +276,159 @@ done: data added through the repository survives a "relaunch".
   required), keeping the package/app test-speed split measured in 0-3.
 
 **References:** ADR-005, ADR-008.
+
+---
+
+## Sprint 2 — Trello tickets
+
+Drafted at Sprint 1 closure. Six cards in dependency order: navigation
+and DI infrastructure first, then the DesignSystem the screens consume,
+then the two feature screens (list, form) with the category write path
+they need in between, and a small closing card that proves the sprint
+goal end-to-end ("the app is usable"). Carried-over deferrals get their
+home here: composition root and category write path (1-4),
+`.sizeThatFits` component snapshots and `.xctestplan` migration (0-4),
+and the minimal XCUITest happy path (0-5).
+
+---
+
+### Task 1 — Composition root and coordinator skeleton
+
+**Objective:** Materialize ADR-007 and ADR-004: `AppDependencies` builds
+the object graph (shared `ModelContainer` → repositories → use cases)
+and an `@Observable` coordinator owns `NavigationPath` via a `Route`
+enum, so every later screen plugs into real infrastructure instead of
+ad-hoc wiring.
+
+**Acceptance criteria:**
+- `AppDependencies.swift` is the only file in the app target importing
+  `EasySavingData`; it creates the on-disk `ModelContainer` (schema:
+  `TransactionModel`, `CategoryModel`) and injects repositories into use
+  cases via initializers.
+- `Navigation/` folder: `Route` enum + coordinator owning
+  `NavigationPath`; root view driven by the coordinator. No
+  `NavigationLink(destination:)` anywhere.
+- App boots on simulator into a coordinator-owned placeholder home (the
+  real list arrives in 2-3); last placeholder wiring from Sprints 0/1
+  removed.
+- Coordinator route handling unit-tested where feasible (route push/pop
+  as pure state changes).
+- Folder layout in the app target proposed with the task and recorded in
+  the TASK_LOG entry as precedent.
+
+**References:** ADR-003, ADR-004, ADR-007; 1-4 follow-up (composition
+root instantiates the repositories).
+
+---
+
+### Task 2 — DesignSystem foundations
+
+**Objective:** Create the `DesignSystem/` layer that resolves ADR-010's
+semantic `String` keys (icon/color) into real SwiftUI values, decide the
+theming strategy that ADR-011 left open, and establish the
+component-snapshot precedent before feature screens exist.
+
+**Acceptance criteria:**
+- `DesignSystem/` folder in the app target: semantic color tokens,
+  icon-key and color-key resolution for `Category`, and money formatting
+  at the UI edge (minor units + currency code → localized string; no
+  `Double` at any point).
+- Theming decision (semantic tokens vs asset catalog) documented as a
+  new ADR entry.
+- First components (e.g. category badge, amount label, transaction row
+  shell) built with Dynamic Type support and VoiceOver labels from day
+  one.
+- Component snapshot suites using `.sizeThatFits` (0-4 follow-up),
+  deterministic on second run; `.xctestplan` migration from the same
+  follow-up executed or explicitly re-deferred with reasons.
+
+**References:** ADR-010, ADR-011 open decision; 0-4 follow-up.
+
+---
+
+### Task 3 — Transaction list feature
+
+**Objective:** First real screen through the full MVVM-C chain: an
+`@Observable` ViewModel in Core exposing state + intent closures, a
+SwiftUI view in the app target, navigation decisions owned by the
+coordinator.
+
+**Acceptance criteria:**
+- `GetCategoriesUseCase` added in Core (rows need category name/icon;
+  read-only, existing repository method).
+- `TransactionsListViewModel` in Core: talks to use cases only, exposes
+  observable state (loading / empty / populated) and intent closures
+  (`onAddTapped`, `onTransactionSelected`); zero navigation logic.
+- List view: rows built on 2-2 components, empty state, swipe-to-delete
+  through `DeleteTransactionUseCase`.
+- Coordinator interprets the intents (what "add tapped" means — sheet,
+  push — is its decision, recorded as precedent).
+- ViewModel unit tests against the existing fakes; snapshot tests for
+  empty and populated states.
+
+**References:** ADR-003, ADR-004, ADR-008.
+
+---
+
+### Task 4 — Category write path and default seeding
+
+**Objective:** Close the deliberate 1-4 gap: `CategoryRepository` gains
+its write path and the app seeds a default category set, so the 2-5 form
+has real categories to pick from.
+
+**Acceptance criteria:**
+- `save`/upsert on `CategoryRepository` (Core protocol + SwiftData
+  implementation), contract documented on the protocol like the 1-4
+  ones; integration tests against the in-memory container.
+- Default category set defined in Core with semantic icon/color keys
+  (resolved by 2-2's DesignSystem).
+- Seeding use case invoked at startup from the composition root;
+  idempotent — proven by a run-twice-no-duplicates test.
+- Fake repositories updated to implement the documented write contract.
+
+**References:** ADR-005, ADR-010; 1-4 follow-up (category write path).
+
+---
+
+### Task 5 — Transaction form: create and edit
+
+**Objective:** Complete the CRUD flow: a form ViewModel in Core handling
+create and edit, presented by the coordinator, with
+`AddTransactionUseCase`'s validation errors surfaced to the user instead
+of swallowed.
+
+**Acceptance criteria:**
+- Form ViewModel in Core: amount, category, date, note; create mode and
+  edit mode (pre-populated). Whether edit reuses `AddTransactionUseCase`
+  (save is upsert) or introduces `UpdateTransactionUseCase` is decided in
+  the task and recorded as precedent.
+- Amount entry: decimal text input parsed to `Money` minor units at the
+  UI edge — no `Double`, no `Float`; parsing unit-tested (locale
+  separators, too many decimals).
+- Validation errors (`AddTransactionError`) mapped to user-facing
+  messages; error state visible in the UI.
+- Coordinator presents the form (add and edit entry points wired from
+  the 2-3 intents).
+- ViewModel unit tests (happy path, validation failure, edit
+  pre-population); snapshot tests for form states.
+
+**References:** ADR-003, ADR-004, ADR-010.
+
+---
+
+### Task 6 — UI happy path and Sprint 2 close
+
+**Objective:** Prove the sprint's definition of done end-to-end and
+close the sprint: the template UI tests finally become the minimal
+ADR-008 happy path, and the project memory is updated.
+
+**Acceptance criteria:**
+- Template XCUITests replaced by one minimal happy path: launch → add
+  transaction via the form → it appears in the list (0-5 follow-up).
+- Full CRUD verified on simulator (create, edit, delete) — the sprint's
+  definition of done.
+- Sprint 2 TASK_LOG entries audited; Sprint 3 cards (analytics) drafted
+  in Trello and their ticket text of record added to
+  `docs/SPRINT_PLAN.md`, per the 0-6 precedent.
+
+**References:** ADR-008; CLAUDE.md workflow; 0-5 follow-up.
